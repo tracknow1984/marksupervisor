@@ -1,0 +1,11 @@
+const express=require('express');
+const app=express();
+const PORT=process.env.PORT||3000;
+app.use(express.json({limit:'8mb'}));
+app.use(require('./src/routes/assets'));
+app.use(require('./src/routes/employees'));
+app.use(require('./src/routes/prestart-config'));
+app.use(require('./src/routes/prestarts'));
+app.get('/',(req,res)=>res.redirect('/assets'));
+app.use((req,res)=>res.status(404).send('Supervisor365 page not found'));
+app.listen(PORT,'0.0.0.0',()=>console.log('Supervisor365 modular master running on '+PORT));
