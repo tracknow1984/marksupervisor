@@ -2,9 +2,9 @@
   "name": "marksupervisor",
   "version": "1.0.0",
   "description": "Supervisor365 fleet and operations management system",
-  "main": "main.js",
+  "main": "app-v2.js",
   "scripts": {
-    "start": "node main.js"
+    "start": "node app-v2.js"
   },
   "dependencies": {
     "express": "^5.1.0"
