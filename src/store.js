@@ -3,7 +3,7 @@ const assetTypes=['Prime Mover','Rigid Truck','A Trailer','B Trailer','Dolly','B
 const baseAsset=(a)=>({
   registrationState:'QLD',registrationExpiry:'',vin:'',acquisitionDate:'',category:'',refrigerationInspectionDate:'',
   handbrakeAlarm:false,reverseCamera:false,adasVideo:false,insuranceExpiry:'',compliancePlateDate:'',
-  coiNumber:'',coiDueDate:'',plantId:'',additionalNotes:'',location:'',serviceDue:false,openDefects:0,...a
+  coiNumber:'',coiDueDate:'',plantId:'',additionalNotes:'',location:'',serviceDue:false,openDefects:0,images:[],...a
 });
 const assets=[
 baseAsset({id:'SB-909',name:'Kenworth T909',make:'Kenworth',model:'T909',type:'Prime Mover',rego:'SB-909',location:'North Maclean',status:'In Service',reading:84220}),
