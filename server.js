@@ -1,87 +1,19 @@
 const express = require("express");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get("/", (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Mark Supervisor</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            background: #f5f6f8;
-            margin: 0;
-          }
+app.get("/", (req,res)=>res.redirect("/assets"));
+app.get("/assets", (req,res)=>res.send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Supervisor365 | Assets</title><style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:#f4f7fb;color:#182230}button,input,select{font:inherit}.app{display:flex;min-height:100vh}.side{width:244px;background:#101827;color:#cbd5e1;padding:22px 14px;position:fixed;inset:0 auto 0 0}.brand{font-size:20px;font-weight:800;color:white;padding:4px 10px 24px}.brand b{color:#4f9cf9}.nav small{display:block;color:#64748b;font-size:10px;letter-spacing:1.2px;font-weight:800;padding:15px 12px 7px}.nav a{display:flex;gap:11px;color:#aeb9c7;text-decoration:none;padding:11px 12px;border-radius:8px;margin:2px 0;font-size:14px}.nav a:hover,.nav a.on{background:#1b2a40;color:white}.nav a.on{box-shadow:inset 3px 0 #3b82f6}.user{position:absolute;bottom:18px;left:14px;right:14px;border-top:1px solid #263449;padding:14px 8px}.user strong{display:block;color:white}.user span{font-size:11px;color:#708096}.main{margin-left:244px;width:calc(100% - 244px)}.top{height:68px;background:white;border-bottom:1px solid #e5eaf0;display:flex;align-items:center;justify-content:space-between;padding:0 32px}.crumb{font-size:13px;color:#7d8898}.content{padding:30px 34px}.title{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}.title h1{margin:0 0 6px;font-size:29px}.title p{margin:0;color:#748094;font-size:14px}.primary{border:0;background:#2577e3;color:white;padding:11px 17px;border-radius:8px;font-weight:700;cursor:pointer}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}.card{background:white;border:1px solid #e3e8ef;border-radius:11px;padding:18px}.card label{display:block;color:#7f8a9a;font-size:11px;font-weight:800;text-transform:uppercase}.card strong{display:block;font-size:28px;margin-top:6px}.panel{background:white;border:1px solid #e3e8ef;border-radius:11px;overflow:hidden}.tools{display:flex;gap:10px;justify-content:space-between;padding:15px;border-bottom:1px solid #e8edf2}.search{flex:1;max-width:430px}.search input,.tools select{width:100%;border:1px solid #d9e0e8;border-radius:8px;padding:10px 12px}.righttools{display:flex;gap:9px}.righttools select{min-width:150px}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:980px}th{text-align:left;background:#fafbfc;color:#768396;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:12px 15px}td{padding:15px;border-top:1px solid #edf1f5;font-size:13px;color:#425064}.asset{display:flex;gap:10px;align-items:center}.pic{width:39px;height:39px;border-radius:8px;background:#eef3f8;display:grid;place-items:center;font-size:19px}.name{font-weight:750;color:#1b2a3d}.sub{font-size:11px;color:#8a96a7;margin-top:3px}.pill{display:inline-block;border-radius:20px;padding:5px 9px;font-size:11px;font-weight:700}.ok{background:#eaf8f0;color:#17884c}.due{background:#fff3da;color:#ad7410}.bad{background:#ffe9e9;color:#c83d3d}.off{background:#eef1f4;color:#687587}.foot{display:flex;justify-content:space-between;padding:13px 15px;border-top:1px solid #edf1f5;font-size:12px;color:#7c8797}.modal{display:none;position:fixed;inset:0;background:#0f172a88;align-items:center;justify-content:center;z-index:10}.modal.open{display:flex}.box{width:min(520px,92vw);background:white;border-radius:13px;padding:23px}.box h2{margin:0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:20px}.field label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}.field input,.field select{width:100%;border:1px solid #d9e0e8;border-radius:7px;padding:10px}.actions{text-align:right;margin-top:19px}.secondary{border:1px solid #d9e0e8;background:white;padding:10px 14px;border-radius:8px;margin-right:7px}@media(max-width:900px){.cards{grid-template-columns:1fr 1fr}.side{width:200px}.main{margin-left:200px;width:calc(100% - 200px)}}@media(max-width:650px){.side{display:none}.main{margin:0;width:100%}.content{padding:20px}.title{flex-direction:column;gap:15px}.cards{grid-template-columns:1fr 1fr}.tools{flex-direction:column}.righttools{flex-direction:column}}
+</style></head><body><div class="app"><aside class="side"><div class="brand">Supervisor<b>365</b></div><nav class="nav"><small>OVERVIEW</small><a href="#">⌂ Dashboard</a><small>OPERATIONS</small><a class="on" href="/assets">▣ Assets</a><a href="#">⚠ Vehicle Defects</a><a href="#">✓ Pre-Starts</a><a href="#">⌁ Maintenance</a><a href="#">◈ Fuel</a><small>WORKFORCE</small><a href="#">♙ Employees</a><a href="#">▤ Documents</a><a href="#">◉ Compliance</a><small>ADMIN</small><a href="#">⚙ Settings</a></nav><div class="user"><strong>Mark</strong><span>Administrator</span></div></aside><main class="main"><header class="top"><div class="crumb">Operations / <b>Assets</b></div><div>◔ &nbsp; ⚙</div></header><div class="content"><section class="title"><div><h1>Assets</h1><p>Manage vehicles, plant, machinery and equipment across your operations.</p></div><button class="primary" onclick="showModal()">＋ Add Asset</button></section><section class="cards"><div class="card"><label>Total Assets</label><strong id="total">128</strong></div><div class="card"><label>Active</label><strong>112</strong></div><div class="card"><label>Due for Service</label><strong>9</strong></div><div class="card"><label>Open Defects</label><strong>7</strong></div></section><section class="panel"><div class="tools"><div class="search"><input id="q" oninput="filterRows()" placeholder="Search asset, rego, serial or location..."></div><div class="righttools"><select id="type" onchange="filterRows()"><option value="">All asset types</option><option>Truck</option><option>Excavator</option><option>Loader</option><option>Crane</option><option>Light Vehicle</option></select><select><option>All locations</option><option>North Maclean</option><option>Rocklea</option><option>Gold Coast</option></select></div></div><div class="tablewrap"><table id="tbl"><thead><tr><th>Asset</th><th>Type</th><th>Registration / ID</th><th>Location</th><th>Odometer / Hours</th><th>Next Service</th><th>Status</th></tr></thead><tbody>
+<tr data-type="Truck"><td><div class="asset"><div class="pic">🚛</div><div><div class="name">Kenworth T909</div><div class="sub">2023 Prime Mover</div></div></div></td><td>Truck</td><td>SB-909</td><td>North Maclean</td><td>84,220 km</td><td>1,780 km</td><td><span class="pill ok">Active</span></td></tr>
+<tr data-type="Excavator"><td><div class="asset"><div class="pic">🚜</div><div><div class="name">CAT 320 Excavator</div><div class="sub">20T Excavator</div></div></div></td><td>Excavator</td><td>EX-0320</td><td>North Maclean</td><td>3,842 hrs</td><td>58 hrs</td><td><span class="pill due">Service Due</span></td></tr>
+<tr data-type="Light Vehicle"><td><div class="asset"><div class="pic">🛻</div><div><div class="name">Ford Ranger Wildtrak</div><div class="sub">2025 Dual Cab</div></div></div></td><td>Light Vehicle</td><td>SV365</td><td>Gold Coast</td><td>24,440 km</td><td>5,560 km</td><td><span class="pill ok">Active</span></td></tr>
+<tr data-type="Crane"><td><div class="asset"><div class="pic">🏗️</div><div><div class="name">Franna AT22</div><div class="sub">Pick & Carry Crane</div></div></div></td><td>Crane</td><td>CR-AT22</td><td>Rocklea</td><td>6,203 hrs</td><td>Inspection due</td><td><span class="pill bad">Open Defect</span></td></tr>
+<tr data-type="Loader"><td><div class="asset"><div class="pic">🚜</div><div><div class="name">CAT 950 Loader</div><div class="sub">Wheel Loader</div></div></div></td><td>Loader</td><td>LD-0950</td><td>North Maclean</td><td>5,018 hrs</td><td>482 hrs</td><td><span class="pill ok">Active</span></td></tr>
+<tr data-type="Truck"><td><div class="asset"><div class="pic">🚚</div><div><div class="name">Isuzu FYJ 300</div><div class="sub">8x4 Rigid Truck</div></div></div></td><td>Truck</td><td>TR-0300</td><td>Rocklea</td><td>166,050 km</td><td>3,950 km</td><td><span class="pill off">Inactive</span></td></tr>
+</tbody></table></div><div class="foot"><span>Showing 6 mock assets</span><span>Page 1 of 1</span></div></section></div></main></div>
+<div class="modal" id="modal"><div class="box"><h2>Add Asset</h2><div class="grid"><div class="field"><label>Asset Name</label><input id="assetName" placeholder="e.g. Volvo FMX"></div><div class="field"><label>Asset Type</label><select id="assetType"><option>Truck</option><option>Excavator</option><option>Loader</option><option>Crane</option><option>Light Vehicle</option></select></div><div class="field"><label>Registration / ID</label><input id="assetId"></div><div class="field"><label>Location</label><select id="assetLocation"><option>North Maclean</option><option>Rocklea</option><option>Gold Coast</option></select></div></div><div class="actions"><button class="secondary" onclick="hideModal()">Cancel</button><button class="primary" onclick="addAsset()">Add Asset</button></div></div></div>
+<script>function showModal(){modal.classList.add('open')}function hideModal(){modal.classList.remove('open')}function filterRows(){const q=document.getElementById('q').value.toLowerCase(),t=document.getElementById('type').value;document.querySelectorAll('#tbl tbody tr').forEach(r=>r.style.display=(!q||r.innerText.toLowerCase().includes(q))&&(!t||r.dataset.type===t)?'':'none')}function addAsset(){const n=assetName.value.trim();if(!n)return alert('Enter an asset name');const tr=document.createElement('tr');tr.dataset.type=assetType.value;tr.innerHTML='<td><div class="asset"><div class="pic">▣</div><div><div class="name">'+n+'</div><div class="sub">New asset</div></div></div></td><td>'+assetType.value+'</td><td>'+assetId.value+'</td><td>'+assetLocation.value+'</td><td>—</td><td>Not scheduled</td><td><span class="pill ok">Active</span></td>';document.querySelector('#tbl tbody').prepend(tr);document.getElementById('total').textContent=parseInt(document.getElementById('total').textContent)+1;hideModal();assetName.value='';assetId.value=''}</script></body></html>`));
 
-          header {
-            background: #111827;
-            color: white;
-            padding: 22px 40px;
-          }
-
-          main {
-            padding: 40px;
-          }
-
-          .card {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            max-width: 800px;
-            box-shadow: 0 2px 10px rgba(0,0,0,.08);
-          }
-
-          h1 {
-            margin: 0;
-          }
-
-          .status {
-            color: #15803d;
-            font-weight: bold;
-          }
-        </style>
-      </head>
-
-      <body>
-
-        <header>
-          <h1>MARK SUPERVISOR</h1>
-        </header>
-
-        <main>
-          <div class="card">
-            <h2>Operations Dashboard</h2>
-
-            <p class="status">
-              ✓ Mark Supervisor is running
-            </p>
-
-            <p>
-              Fleet and operations management platform.
-            </p>
-
-            <hr>
-
-            <h3>Coming next</h3>
-
-            <p>Fleet Management</p>
-            <p>Vehicle Defects</p>
-            <p>Pre-Start Inspections</p>
-            <p>Maintenance</p>
-            <p>Employees</p>
-            <p>Compliance</p>
-
-          </div>
-        </main>
-
-      </body>
-    </html>
-  `);
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Mark Supervisor running on port ${PORT}`);
-});
+app.listen(PORT,"0.0.0.0",()=>console.log(`Supervisor365 running on port ${PORT}`));
