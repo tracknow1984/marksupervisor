@@ -1,6 +1,6 @@
 {
   "name": "marksupervisor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Supervisor365 fleet and operations management system",
   "main": "app-v4.js",
   "scripts": {
