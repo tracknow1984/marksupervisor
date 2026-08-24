@@ -3,6 +3,7 @@ const app=express();
 const PORT=process.env.PORT||3000;
 app.use(express.json({limit:'8mb'}));
 app.use(require('./src/routes/assets'));
+app.use(require('./src/routes/asset-qr'));
 app.use(require('./src/routes/employees'));
 app.use(require('./src/routes/prestart-config'));
 app.use(require('./src/routes/prestarts'));
