@@ -7,6 +7,11 @@ app.use(express.json({limit:'8mb'}));
 app.use((req,res,next)=>{
   const originalSend=res.send.bind(res);
   res.send=(body)=>{
+    // Hotfix malformed closing brace in Pre-Start GPS helper introduced during defect integration.
+    // This restores execution of the page script so the asset dropdown is populated.
+    if(typeof body==='string'&&req.path==='/prestarts'){
+      body=body.replace("&z=17&output=embed\"></iframe>'}}function captureLocation","&z=17&output=embed\"></iframe>'}}}function captureLocation");
+    }
     if(typeof body==='string'&&body.includes('<span class="navlabel">WORKFORCE</span>')){
       if(!body.includes('href="/prestart-history"')){const active=req.path==='/prestart-history'?'on':'';const historyLink=`<a class="${active}" href="/prestart-history" title="Pre-Start History"><span class="navicon"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span class="navtext">Pre-Start History</span><span class="navchev">›</span></a>`;body=body.replace('<span class="navlabel">WORKFORCE</span>',historyLink+'<span class="navlabel">WORKFORCE</span>')}
       if(!body.includes('href="/gps"')){const active=req.path==='/gps'?'on':'';const gpsLink=`<a class="${active}" href="/gps" title="Live GPS"><span class="navicon"><svg viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></svg></span><span class="navtext">Live GPS</span><span class="navchev">›</span></a>`;body=body.replace('<span class="navlabel">WORKFORCE</span>',gpsLink+'<span class="navlabel">WORKFORCE</span>')}
