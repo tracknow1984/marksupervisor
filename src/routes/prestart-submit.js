@@ -2,44 +2,8 @@ const express=require('express');
 const router=express.Router();
 const {assets,employees}=require('../store');
 const db=require('../persistent-store');
+const {latchDriver}=require('../driver-assignment');
 const priorityFor=label=>{const s=String(label||'').toLowerCase();if(/brake|steering|tyre|wheel|seat belt|king pin|tow eye|coupling|breakaway|air system|chassis crack/.test(s))return 'HIGH';if(/light|warning|wiper|mirror|leak|suspension|bearing|exhaust/.test(s))return 'MEDIUM';return 'LOW'};
-
-function clearAssetDriver(asset){
-  asset.currentDriverEmployeeId='';
-  asset.currentDriverName='';
-  asset.currentDriverEmail='';
-  asset.currentDriverPhone='';
-  asset.driverLatchedAt='';
-  asset.driverPrestartId='';
-}
-function clearEmployeeAsset(employee){
-  employee.currentAssetId='';
-  employee.currentAssetName='';
-  employee.currentAssetRego='';
-  employee.currentAssetAssignedAt='';
-  employee.currentPrestartId='';
-}
-function latchDriver(asset,employee,prestart){
-  const priorEmployeeId=String(asset.currentDriverEmployeeId||'');
-  if(priorEmployeeId&&priorEmployeeId!==String(employee.id)){
-    const priorEmployee=employees.find(e=>String(e.id)===priorEmployeeId);
-    if(priorEmployee&&String(priorEmployee.currentAssetId||'')===String(asset.id))clearEmployeeAsset(priorEmployee);
-  }
-  for(const other of assets){
-    if(String(other.id)!==String(asset.id)&&String(other.currentDriverEmployeeId||'')===String(employee.id))clearAssetDriver(other);
-  }
-  asset.currentDriverEmployeeId=employee.id;
-  asset.currentDriverName=[employee.firstName,employee.lastName].filter(Boolean).join(' ').trim()||employee.email||employee.id;
-  asset.currentDriverEmail=employee.email||'';
-  asset.currentDriverPhone=employee.phone||'';
-  asset.driverLatchedAt=prestart.completedAt;
-  asset.driverPrestartId=prestart.id;
-  employee.currentAssetId=asset.id;
-  employee.currentAssetName=asset.name;
-  employee.currentAssetRego=asset.rego;
-  employee.currentAssetAssignedAt=prestart.completedAt;
-  employee.currentPrestartId=prestart.id;
-}
 
 router.post('/api/prestarts',(req,res)=>{
   try{
