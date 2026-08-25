@@ -1,4 +1,6 @@
 // Stable hosting entry point for Supervisor365.
+// During the build stage, restore a linked sample dataset whenever a fresh runtime starts.
+require('./src/build-sample-data').seed();
 // Install the smart navigation fix first so it can validate the injected menu HTML.
 require('./src/smart-nav-fix');
 // Install the smart grouped navigation before the app mounts its routes.
