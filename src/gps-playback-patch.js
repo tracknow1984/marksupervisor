@@ -1,4 +1,21 @@
 const express=require('express');
+const playbackRouter=require('./routes/gps-playback');
+
+// app-master installs express.json before its route stack. Wrap that parser once so the
+// playback API is available before the legacy 404 route without changing the master file.
+if(!express.__sv365GpsPlaybackJsonPatched){
+  express.__sv365GpsPlaybackJsonPatched=true;
+  const originalJson=express.json;
+  express.json=function(...args){
+    const parser=originalJson(...args);
+    return function sv365JsonWithPlayback(req,res,next){
+      parser(req,res,err=>{
+        if(err)return next(err);
+        playbackRouter(req,res,next);
+      });
+    };
+  };
+}
 
 if(!express.response.__sv365GpsPlaybackPatched){
   express.response.__sv365GpsPlaybackPatched=true;
