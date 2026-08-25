@@ -4,7 +4,8 @@
   "description": "Supervisor365 fleet and operations management system",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "data:flush": "node scripts/flush-build-data.js"
   },
   "dependencies": {
     "express": "^5.1.0",
