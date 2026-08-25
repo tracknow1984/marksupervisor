@@ -11,5 +11,7 @@ require('./src/asset-expiry-legend-patch');
 require('./src/asset-expiry-patch');
 // Prevent expired registrations from being selected for pre-start inspections.
 require('./src/prestart-registration-safety-patch');
+// Re-link clearly matching Wialon units after the token is re-entered.
+require('./src/gps-auto-link-patch');
 // All pages are now mounted from isolated route modules under src/routes.
 require('./app-master.js');
