@@ -54,6 +54,7 @@ app.use(require('./src/routes/prestarts-mobile'));
 app.use(require('./src/routes/prestart-history'));
 app.use(require('./src/routes/vehicle-defects-v2'));
 app.use(require('./src/routes/vehicle-defects'));
+app.use(require('./src/routes/incident-management'));
 app.use(require('./src/routes/incident-register'));
 app.use(require('./src/routes/services'));
 app.use(require('./src/routes/gps'));
