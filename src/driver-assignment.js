@@ -1,5 +1,11 @@
 const {assets,employees}=require('./store');
 
+const AUTO_DETACH_MS=60*60*1000;
+const GPS_FRESH_MS=10*60*1000;
+const MOVE_SPEED_KMH=2;
+const MOVE_DISTANCE_METRES=50;
+const WATCH_INTERVAL_MS=5*60*1000;
+
 function nameOf(employee){
   return [employee?.firstName,employee?.lastName].filter(Boolean).join(' ').trim()||employee?.email||employee?.id||'';
 }
@@ -97,4 +103,76 @@ function latchDriver(asset,employee,prestart){
   return {assetId:asset.id,employeeId:employee.id,employeeName:asset.currentDriverName,assignedAt,prestartId:prestart.id||''};
 }
 
-module.exports={latchDriver,detachDriver,clearAssetDriver,clearEmployeeAsset,nameOf};
+function distanceMetres(lat1,lon1,lat2,lon2){
+  const toRad=n=>n*Math.PI/180;
+  const r=6371000;
+  const dLat=toRad(lat2-lat1),dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*r*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function observeGpsRows(rows,nowMs=Date.now()){
+  const detached=[];
+  if(!Array.isArray(rows))return detached;
+  const byAsset=new Map(rows.map(row=>[String(row.assetId),row]));
+  for(const asset of assets){
+    if(!asset.currentDriverEmployeeId||!asset.wialonUnitId)continue;
+    const row=byAsset.get(String(asset.id));
+    const p=row?.unit?.position;
+    if(!p){asset.driverGpsState='unavailable';continue;}
+    const gpsMs=Number(p.time)*1000;
+    const fresh=Number.isFinite(gpsMs)&&gpsMs>0&&gpsMs<=nowMs+60000&&(nowMs-gpsMs)<=GPS_FRESH_MS;
+    if(!fresh){asset.driverGpsState='stale';continue;}
+    const lat=Number(p.lat),lon=Number(p.lon),speed=Number(p.speed)||0;
+    const prevLat=Number(asset.driverLastGpsLat),prevLon=Number(asset.driverLastGpsLon);
+    const hasPrevious=Number.isFinite(prevLat)&&Number.isFinite(prevLon);
+    const movedDistance=hasPrevious&&Number.isFinite(lat)&&Number.isFinite(lon)?distanceMetres(prevLat,prevLon,lat,lon):0;
+    const moved=speed>MOVE_SPEED_KMH||movedDistance>=MOVE_DISTANCE_METRES;
+    const gpsIso=new Date(gpsMs).toISOString();
+    asset.driverLastGpsAt=gpsIso;
+    if(Number.isFinite(lat))asset.driverLastGpsLat=lat;
+    if(Number.isFinite(lon))asset.driverLastGpsLon=lon;
+    if(moved){
+      asset.driverGpsState='moving';
+      asset.driverLastMovedAt=gpsIso;
+      asset.driverStationarySince='';
+      continue;
+    }
+    asset.driverGpsState='stationary';
+    if(!asset.driverStationarySince){
+      asset.driverStationarySince=gpsIso;
+      continue;
+    }
+    const stationarySinceMs=new Date(asset.driverStationarySince).getTime();
+    if(Number.isFinite(stationarySinceMs)&&nowMs-stationarySinceMs>=AUTO_DETACH_MS){
+      const released=detachDriver(asset,{reason:'gps_stationary_60m',detachedAt:new Date(nowMs).toISOString()});
+      if(released)detached.push(released);
+    }
+  }
+  return detached;
+}
+
+let watchBusy=false;
+async function runGpsDriverWatch(){
+  if(watchBusy)return;
+  watchBusy=true;
+  try{
+    const port=process.env.PORT||3000;
+    const r=await fetch(`http://127.0.0.1:${port}/api/gps/live`,{headers:{'X-Supervisor365-Internal':'driver-assignment-watch'}});
+    if(!r.ok)return;
+    const rows=await r.json();
+    const detached=observeGpsRows(rows);
+    if(detached.length)console.log('Supervisor365 auto-detached drivers:',detached.map(x=>`${x.employeeName||x.employeeId} from ${x.rego||x.assetName}`).join(', '));
+  }catch(e){
+    if(!/ECONNREFUSED|fetch failed/i.test(String(e.message||'')))console.warn('Driver GPS assignment watch failed:',e.message);
+  }finally{
+    watchBusy=false;
+  }
+}
+
+const watchTimer=setInterval(runGpsDriverWatch,WATCH_INTERVAL_MS);
+if(watchTimer.unref)watchTimer.unref();
+const firstWatch=setTimeout(runGpsDriverWatch,60000);
+if(firstWatch.unref)firstWatch.unref();
+
+module.exports={latchDriver,detachDriver,clearAssetDriver,clearEmployeeAsset,nameOf,observeGpsRows,runGpsDriverWatch,AUTO_DETACH_MS};
