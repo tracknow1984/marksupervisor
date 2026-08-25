@@ -7,6 +7,8 @@ require('./src/smart-nav-fix');
 require('./src/smart-nav-patch');
 // Add Reports into the Fleet section of the smart navigation.
 require('./src/reports-nav-patch');
+// Mount the graphical owner/operations dashboard and make it the home page.
+require('./src/dashboard-patch');
 // Add user guidance for the asset expiry traffic-light status.
 require('./src/asset-expiry-legend-patch');
 // Add traffic-light expiry health indicators to the Assets register.
