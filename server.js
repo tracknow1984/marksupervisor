@@ -15,5 +15,7 @@ require('./src/prestart-registration-safety-patch');
 require('./src/gps-auto-link-patch');
 // Add historical Wialon route playback controls to the existing Live GPS map.
 require('./src/gps-playback-patch');
+// Bring Wialon report templates and report execution into Supervisor365.
+require('./src/wialon-reports-patch');
 // All pages are now mounted from isolated route modules under src/routes.
 require('./app-master.js');
