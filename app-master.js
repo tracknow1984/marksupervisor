@@ -7,7 +7,6 @@ app.use(express.json({limit:'8mb'}));
 
 const htmlEsc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
 
-// Diagnostic for the relational Pre-Start -> failed item -> Vehicle Defect pipeline.
 app.get('/api/diagnostics/prestart-defects',(req,res)=>{
   try{
     const prestarts=operationsDb.listPrestarts();
@@ -22,7 +21,6 @@ app.get('/api/diagnostics/prestart-defects',(req,res)=>{
   }catch(e){res.status(500).json({ok:false,error:e.message,storeFile:operationsDb.FILE})}
 });
 
-// Shared navigation extensions and light cross-page wiring.
 app.use((req,res,next)=>{
   const originalSend=res.send.bind(res);
   res.send=(body)=>{
@@ -48,8 +46,12 @@ app.use(require('./src/routes/assets'));
 app.use(require('./src/routes/asset-qr'));
 app.use(require('./src/routes/employees'));
 app.use(require('./src/routes/prestart-config'));
+// Verified submission route must be mounted before the legacy prestart route.
+app.use(require('./src/routes/prestart-submit'));
 app.use(require('./src/routes/prestarts-mobile'));
 app.use(require('./src/routes/prestart-history'));
+// Server-rendered defect page/API must be mounted before the legacy defect route.
+app.use(require('./src/routes/vehicle-defects-v2'));
 app.use(require('./src/routes/vehicle-defects'));
 app.use(require('./src/routes/gps'));
 app.get('/defects',(req,res)=>res.redirect('/vehicle-defects'));
