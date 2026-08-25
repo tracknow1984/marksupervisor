@@ -2,9 +2,25 @@ const express=require('express');
 const app=express();
 const PORT=process.env.PORT||3000;
 const {assets}=require('./src/store');
+const operationsDb=require('./src/persistent-store');
 app.use(express.json({limit:'8mb'}));
 
 const htmlEsc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
+
+// Diagnostic for the relational Pre-Start -> failed item -> Vehicle Defect pipeline.
+app.get('/api/diagnostics/prestart-defects',(req,res)=>{
+  try{
+    const prestarts=operationsDb.listPrestarts();
+    const defects=operationsDb.listDefects();
+    const latest=[...prestarts].sort((a,b)=>new Date(b.completedAt||0)-new Date(a.completedAt||0))[0]||null;
+    if(!latest)return res.json({ok:false,storeFile:operationsDb.FILE,prestartCount:0,defectCount:defects.length,message:'No persisted pre-starts found on this running instance.'});
+    const failed=(latest.results||[]).filter(x=>String(x.value||'').trim().toLowerCase()==='fail');
+    const linked=defects.filter(d=>String(d.prestartId)===String(latest.id));
+    const missing=failed.filter(f=>!linked.some(d=>String(d.prestartItemId)===String(f.itemId)));
+    res.set('Cache-Control','no-store');
+    res.json({ok:missing.length===0&&linked.length>=failed.length,storeFile:operationsDb.FILE,prestartCount:prestarts.length,defectCount:defects.length,latestPrestart:{id:latest.id,completedAt:latest.completedAt,assetId:latest.assetId,assetName:latest.assetName,rego:latest.rego,status:latest.status,failedCountStored:latest.failedCount,failedItems:failed.map(x=>({itemId:x.itemId,label:x.label,value:x.value}))},linkedDefects:linked.map(d=>({id:d.id,prestartItemId:d.prestartItemId,defect:d.defect,status:d.status,priority:d.priority})),missingDefects:missing.map(x=>({itemId:x.itemId,label:x.label})),diagnosis:failed.length===0?'Latest persisted pre-start contains no FAIL values.':missing.length?'FAIL values were persisted but matching defect records are missing.':'Latest failed items have matching persisted defect records.'});
+  }catch(e){res.status(500).json({ok:false,error:e.message,storeFile:operationsDb.FILE})}
+});
 
 // Shared navigation extensions and light cross-page wiring.
 app.use((req,res,next)=>{
@@ -36,7 +52,6 @@ app.use(require('./src/routes/prestarts-mobile'));
 app.use(require('./src/routes/prestart-history'));
 app.use(require('./src/routes/vehicle-defects'));
 app.use(require('./src/routes/gps'));
-// Legacy/old menu paths all resolve to the current Vehicle Defects page.
 app.get('/defects',(req,res)=>res.redirect('/vehicle-defects'));
 app.get('/vehicleDefects',(req,res)=>res.redirect('/vehicle-defects'));
 app.get('/',(req,res)=>res.redirect('/assets'));
