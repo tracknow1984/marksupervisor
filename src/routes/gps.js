@@ -43,6 +43,11 @@ async function units(){
   const data=await wialonCall('core/search_items',{spec:{itemsType:'avl_unit',propName:'sys_name',propValueMask:'*',sortType:'sys_name'},force:1,flags:UNIT_FLAGS,count:0,from:0,to:0},auth.eid);
   return Promise.all((data.items||[]).map(async u=>({id:String(u.id),name:u.nm,position:u.pos?{lat:u.pos.y,lon:u.pos.x,speed:u.pos.s||0,course:u.pos.c||0,time:u.pos.t||0}:null,telemetry:await telemetryForUnit(u,auth.eid)})));
 }
+async function wialonResources(){
+  const auth=await login();
+  const data=await wialonCall('core/search_items',{spec:{itemsType:'avl_resource',propName:'sys_name',propValueMask:'*',sortType:'sys_name'},force:1,flags:1,count:0,from:0,to:0},auth.eid);
+  return (data.items||[]).map(r=>({id:String(r.id),name:r.nm||('Resource '+r.id)}));
+}
 async function geofences(){
   const auth=await login();
   const data=await wialonCall('core/search_items',{spec:{itemsType:'avl_resource',propName:'sys_name',propValueMask:'*',sortType:'sys_name'},force:1,flags:4097,count:0,from:0,to:0},auth.eid);
@@ -53,6 +58,7 @@ async function geofences(){
   }
   return out;
 }
+function colorToArgb(hex){const m=/^#?([0-9a-f]{6})$/i.exec(String(hex||''));if(!m)throw new Error('Select a valid geofence colour');return (0xFF000000|parseInt(m[1],16))>>>0}
 function assetClass(a){return String(a.category||a.type||'Other').trim()||'Other'}
 function publicAsset(a,u){return {assetId:a.id,name:a.name,rego:a.rego,type:a.type,assetClass:assetClass(a),unit:u||null}}
 function validShare(row){return !!row&&!row.revokedAt&&new Date(row.expiresAt).getTime()>Date.now()}
@@ -62,7 +68,21 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 router.post('/api/gps/wialon/token',async(req,res)=>{try{const token=String(req.body?.token||'').trim();if(!token)return res.status(400).json({error:'Enter a Wialon token'});const old=gpsConfig.token;gpsConfig.token=token;try{const a=await login();gpsConfig.connectedUser=a.user?.nm||'';gpsConfig.lastTest=new Date().toISOString();res.json({ok:true,user:gpsConfig.connectedUser})}catch(e){gpsConfig.token=old;throw e}}catch(e){res.status(400).json({error:e.message})}});
 router.get('/api/gps/wialon/status',(req,res)=>res.json({configured:!!gpsConfig.token,user:gpsConfig.connectedUser,lastTest:gpsConfig.lastTest}));
 router.get('/api/gps/wialon/units',async(req,res)=>{try{res.json(await units())}catch(e){res.status(400).json({error:e.message})}});
+router.get('/api/gps/wialon/resources',async(req,res)=>{try{res.set('Cache-Control','no-store');res.json(await wialonResources())}catch(e){res.status(400).json({error:e.message})}});
 router.get('/api/gps/wialon/geofences',async(req,res)=>{try{res.set('Cache-Control','no-store');res.json(await geofences())}catch(e){res.status(400).json({error:e.message})}});
+router.post('/api/gps/wialon/geofences',async(req,res)=>{try{
+  const name=String(req.body?.name||'').trim(),address=String(req.body?.address||'').trim(),resourceId=Number(req.body?.resourceId),radius=Math.round(Number(req.body?.radius)),lat=Number(req.body?.lat),lon=Number(req.body?.lon),color=colorToArgb(req.body?.color||'#2577e3');
+  if(!name)return res.status(400).json({error:'Geofence name is required'});
+  if(!Number.isInteger(resourceId)||resourceId<=0)return res.status(400).json({error:'Select a Wialon resource'});
+  if(!Number.isFinite(lat)||!Number.isFinite(lon))return res.status(400).json({error:'Search and select a valid address first'});
+  if(!Number.isInteger(radius)||radius<5||radius>100)return res.status(400).json({error:'Radius must be between 5 and 100 metres'});
+  const auth=await login();
+  const params={itemId:resourceId,id:0,callMode:'create',n:name,d:address,t:3,w:radius,f:112,c:color,tc:16777215,ts:12,min:0,max:18,path:'',libId:0,p:[{x:lon,y:lat,r:radius}]};
+  const result=await wialonCall('resource/update_zone',params,auth.eid);
+  const zoneId=Array.isArray(result)?String(result[0]||''):'';
+  res.status(201).json({ok:true,id:zoneId,name,address,resourceId:String(resourceId),radius,lat,lon,color:Number(color)});
+}catch(e){console.error('Wialon geofence create failed:',e.message);res.status(400).json({error:e.message})}});
+router.get('/api/gps/geocode',async(req,res)=>{try{const q=String(req.query.q||'').trim();if(q.length<3)return res.status(400).json({error:'Enter at least 3 characters of an address'});const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&countrycodes=au&q='+encodeURIComponent(q);const r=await fetch(url,{headers:{'User-Agent':'Supervisor365/1.0','Accept-Language':'en-AU,en;q=0.9'}});if(!r.ok)throw new Error('Unable to search addresses');const rows=await r.json();res.json((Array.isArray(rows)?rows:[]).map(x=>({displayName:x.display_name||'',lat:Number(x.lat),lon:Number(x.lon),type:x.type||''})).filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lon)))}catch(e){res.status(400).json({error:e.message})}});
 router.post('/api/gps/link',(req,res)=>{const a=assets.find(x=>x.id===req.body?.assetId);if(!a)return res.status(404).json({error:'Asset not found'});a.wialonUnitId=String(req.body?.wialonUnitId||'');a.wialonUnitName=String(req.body?.wialonUnitName||'');res.json(a)});
 router.get('/api/gps/live',async(req,res)=>{try{const us=await units();const byId=new Map(us.map(u=>[u.id,u]));res.set('Cache-Control','no-store');res.json(assets.filter(a=>a.wialonUnitId).map(a=>publicAsset(a,byId.get(String(a.wialonUnitId))||null)))}catch(e){res.status(400).json({error:e.message})}});
 router.get('/api/gps/address',async(req,res)=>{try{const lat=Number(req.query.lat),lon=Number(req.query.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon))return res.status(400).json({error:'Invalid coordinates'});const key=lat.toFixed(4)+','+lon.toFixed(4);if(addressCache.has(key))return res.json({address:addressCache.get(key),cached:true});const url='https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&zoom=18&addressdetails=1';const r=await fetch(url,{headers:{'User-Agent':'Supervisor365/1.0','Accept-Language':'en-AU,en;q=0.9'}});if(!r.ok)throw new Error('Unable to resolve address');const d=await r.json();const address=d.display_name||lat.toFixed(6)+', '+lon.toFixed(6);addressCache.set(key,address);if(addressCache.size>500)addressCache.delete(addressCache.keys().next().value);res.json({address})}catch(e){res.status(400).json({error:e.message})}});
