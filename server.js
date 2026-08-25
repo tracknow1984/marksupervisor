@@ -3,5 +3,7 @@
 require('./src/smart-nav-fix');
 // Install the smart grouped navigation before the app mounts its routes.
 require('./src/smart-nav-patch');
+// Add traffic-light expiry health indicators to the Assets register.
+require('./src/asset-expiry-patch');
 // All pages are now mounted from isolated route modules under src/routes.
 require('./app-master.js');
