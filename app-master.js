@@ -5,7 +5,7 @@ const {assets}=require('./src/store');
 const operationsDb=require('./src/persistent-store');
 app.use(express.json({limit:'60mb'}));
 
-const htmlEsc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
+const htmlEsc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 app.get('/api/diagnostics/prestart-defects',(req,res)=>{
   try{
@@ -56,6 +56,8 @@ app.use(require('./src/routes/vehicle-defects-v2'));
 app.use(require('./src/routes/vehicle-defects'));
 app.use(require('./src/routes/incident-management'));
 app.use(require('./src/routes/incident-register'));
+// Reliable server-backed service workflow must be mounted before the legacy route.
+app.use(require('./src/routes/services-v2'));
 app.use(require('./src/routes/services'));
 app.use(require('./src/routes/gps'));
 app.get('/defects',(req,res)=>res.redirect('/vehicle-defects'));
