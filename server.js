@@ -7,5 +7,7 @@ require('./src/smart-nav-patch');
 require('./src/asset-expiry-legend-patch');
 // Add traffic-light expiry health indicators to the Assets register.
 require('./src/asset-expiry-patch');
+// Prevent expired registrations from being selected for pre-start inspections.
+require('./src/prestart-registration-safety-patch');
 // All pages are now mounted from isolated route modules under src/routes.
 require('./app-master.js');
