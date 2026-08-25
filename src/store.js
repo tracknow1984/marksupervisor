@@ -19,4 +19,6 @@ const pmLabels=['Odometer Reading','Inspection Date','Registration Plates Affixe
 const prestartItems=pmLabels.map((label,i)=>({id:i+1,assetType:'Prime Mover',label,name:'item'+(i+1),type:i===0?'Number':i===1?'Date':'Checkbox',element:'Input',dataType:i>1?'Boolean':'String',required:true,compulsory:false,daily:true,weekly:false,monthly:false,order:i+1}));
 const genericItems=['General Condition','Lights / Warning Devices','Tyres / Tracks / Wheels','Fluid Leaks','Brakes / Controls','Safety Equipment'].map((label,i)=>({id:100+i,assetType:'Generic',label,name:'generic'+(i+1),type:'Checkbox',element:'Input',dataType:'Boolean',required:true,compulsory:false,daily:true,weekly:false,monthly:false,order:i+1}));
 const prestartHistory=[];
-module.exports={assetTypes,assets,employees,prestartItems,genericItems,prestartHistory};
+// Defects are relational records: assetId is the permanent key; rego is retained as a historical snapshot.
+const vehicleDefects=[];
+module.exports={assetTypes,assets,employees,prestartItems,genericItems,prestartHistory,vehicleDefects};
