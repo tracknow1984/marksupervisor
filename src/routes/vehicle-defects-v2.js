@@ -3,12 +3,101 @@ const router=express.Router();
 const {page}=require('../layout');
 const {assets}=require('../store');
 const db=require('../persistent-store');
+
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const active=d=>!['RESOLVED','CLOSED'].includes(String(d.status||'').toUpperCase());
 const priorityFor=label=>{const s=String(label||'').toLowerCase();if(/brake|steering|tyre|wheel|seat belt|king pin|tow eye|coupling|breakaway|air system|chassis crack/.test(s))return 'HIGH';if(/light|warning|wiper|mirror|leak|suspension|bearing|exhaust/.test(s))return 'MEDIUM';return 'LOW'};
-function reconcile(){let defects=db.listDefects();let added=0;for(const ps of db.listPrestarts()){const failed=(ps.results||[]).filter(r=>String(r.value||'').trim().toLowerCase()==='fail');for(let i=0;i<failed.length;i++){const f=failed[i],key=f.itemId??('IDX-'+i);if(defects.some(d=>String(d.prestartId)===String(ps.id)&&String(d.prestartItemId)===String(key)))continue;const now=ps.completedAt||new Date().toISOString();const d={id:'DEF-'+Date.now().toString(36).toUpperCase()+'-'+i+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),assetId:ps.assetId,assetName:ps.assetName,assetType:ps.assetType,rego:ps.rego,prestartId:ps.id,prestartItemId:key,defect:f.label||'Pre-Start defect',reportedAt:now,reportedBy:ps.inspector||'Current User',reading:ps.reading||0,location:ps.address||ps.location||'',priority:priorityFor(f.label),status:'OPEN',action:'',resolutionNotes:'',updatedAt:now,resolvedAt:null,closedAt:null};db.saveDefect(d);defects.push(d);added++}const a=assets.find(x=>String(x.id)===String(ps.assetId));if(a)a.openDefects=defects.filter(d=>String(d.assetId)===String(a.id)&&active(d)).length}return added}
+
+function reconcile(){
+  let defects=db.listDefects();
+  let added=0;
+  for(const ps of db.listPrestarts()){
+    const failed=(ps.results||[]).filter(r=>String(r.value||'').trim().toLowerCase()==='fail');
+    for(let i=0;i<failed.length;i++){
+      const f=failed[i],key=f.itemId??('IDX-'+i);
+      if(defects.some(d=>String(d.prestartId)===String(ps.id)&&String(d.prestartItemId)===String(key)))continue;
+      const now=ps.completedAt||new Date().toISOString();
+      const d={id:'DEF-'+Date.now().toString(36).toUpperCase()+'-'+i+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),assetId:ps.assetId,assetName:ps.assetName,assetType:ps.assetType,rego:ps.rego,prestartId:ps.id,prestartItemId:key,defect:f.label||'Pre-Start defect',reportedAt:now,reportedBy:ps.inspector||'Current User',reading:ps.reading||0,location:ps.address||ps.location||'',priority:priorityFor(f.label),status:'OPEN',action:'',resolutionNotes:'',updatedAt:now,resolvedAt:null,closedAt:null};
+      db.saveDefect(d);defects.push(d);added++;
+    }
+    const a=assets.find(x=>String(x.id)===String(ps.assetId));
+    if(a)a.openDefects=defects.filter(d=>String(d.assetId)===String(a.id)&&active(d)).length;
+  }
+  return added;
+}
+
+function groupByRego(rows){
+  const groups=new Map();
+  for(const d of rows){
+    const key=String(d.rego||d.assetId||'Unregistered').toUpperCase();
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(d);
+  }
+  return [...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+}
+
 router.get('/api/vehicle-defects',(req,res)=>{reconcile();res.set('Cache-Control','no-store');res.json(db.listDefects())});
-router.post('/api/vehicle-defects/reconcile',(req,res)=>{const added=reconcile();res.json({ok:true,added,total:defects=db.listDefects().length})});
-router.patch('/api/vehicle-defects/:id',(req,res)=>{const old=db.listDefects().find(x=>String(x.id)===String(req.params.id));if(!old)return res.status(404).json({error:'Defect not found'});const statuses=['OPEN','IN PROGRESS','RESOLVED','CLOSED'],actions=['','REPAIR','REPLACED','CONTRACTOR'];const status=String(req.body?.status||old.status).toUpperCase(),action=String(req.body?.action??old.action??'').toUpperCase(),resolutionNotes=String(req.body?.resolutionNotes??old.resolutionNotes??'').trim();if(!statuses.includes(status))return res.status(400).json({error:'Invalid status'});if(!actions.includes(action))return res.status(400).json({error:'Invalid action'});if(['RESOLVED','CLOSED'].includes(status)&&!action)return res.status(400).json({error:'Select REPAIR, REPLACED or CONTRACTOR before resolving a defect'});const now=new Date().toISOString();const changes={status,action,resolutionNotes,updatedAt:now,resolvedAt:old.resolvedAt,closedAt:old.closedAt};if(status==='RESOLVED'&&!changes.resolvedAt)changes.resolvedAt=now;if(status==='CLOSED'){if(!changes.resolvedAt)changes.resolvedAt=now;changes.closedAt=now}if(!['RESOLVED','CLOSED'].includes(status)){changes.resolvedAt=null;changes.closedAt=null}const d=db.updateDefect(req.params.id,changes);const a=assets.find(x=>String(x.id)===String(d.assetId));if(a)a.openDefects=db.listDefects().filter(x=>String(x.assetId)===String(a.id)&&active(x)).length;res.json(d)});
-router.get('/vehicle-defects',(req,res)=>{reconcile();const all=db.listDefects();const prestarts=db.listPrestarts();const latest=[...prestarts].sort((a,b)=>new Date(b.completedAt||0)-new Date(a.completedAt||0))[0]||null;const latestFails=latest?(latest.results||[]).filter(x=>String(x.value||'').trim().toLowerCase()==='fail'):[];const latestLinked=latest?all.filter(d=>String(d.prestartId)===String(latest.id)):[];const open=all.filter(active).sort((a,b)=>({HIGH:0,MEDIUM:1,LOW:2}[a.priority]??9)-({HIGH:0,MEDIUM:1,LOW:2}[b.priority]??9)||new Date(b.reportedAt)-new Date(a.reportedAt));const archived=all.filter(d=>!active(d)).sort((a,b)=>new Date(b.resolvedAt||b.closedAt||b.updatedAt)-new Date(a.resolvedAt||a.closedAt||a.updatedAt));const rows=open.map(d=>`<tr data-row="${esc(d.id)}"><td>${new Date(d.reportedAt).toLocaleString('en-AU')}</td><td><span class="priority ${esc(d.priority)}">${esc(d.priority)}</span></td><td><b>${esc(d.rego||d.assetId)}</b><div class="sub">${esc(d.assetName)}</div></td><td><b>${esc(d.defect)}</b><div class="sub">${esc(d.prestartId)}</div></td><td><select data-status="${esc(d.id)}"><option${d.status==='OPEN'?' selected':''}>OPEN</option><option${d.status==='IN PROGRESS'?' selected':''}>IN PROGRESS</option><option>RESOLVED</option><option>CLOSED</option></select></td><td><select data-action="${esc(d.id)}"><option value="">Select...</option><option${d.action==='REPAIR'?' selected':''}>REPAIR</option><option${d.action==='REPLACED'?' selected':''}>REPLACED</option><option${d.action==='CONTRACTOR'?' selected':''}>CONTRACTOR</option></select></td><td><input data-notes="${esc(d.id)}" value="${esc(d.resolutionNotes||'')}" placeholder="What was done?"></td><td><button class="primary" data-save="${esc(d.id)}">Save</button></td></tr>`).join('')||'<tr><td colspan="8"><div class="empty">No outstanding defects.</div></td></tr>';const archiveRows=archived.map(d=>`<tr><td>${new Date(d.reportedAt).toLocaleString('en-AU')}</td><td>${d.resolvedAt||d.closedAt?new Date(d.resolvedAt||d.closedAt).toLocaleString('en-AU'):'—'}</td><td><b>${esc(d.rego||d.assetId)}</b><div class="sub">${esc(d.assetName)}</div></td><td>${esc(d.defect)}</td><td><span class="pill ok">${esc(d.status)}</span><div class="sub">${esc(d.action||'—')}</div></td><td>${esc(d.resolutionNotes||'—')}</td></tr>`).join('')||'<tr><td colspan="6"><div class="empty">No archived defects yet.</div></td></tr>';const diag=latest?`Latest Pre-Start <b>${esc(latest.id)}</b> · ${esc(latest.rego)} · result <b>${esc(latest.status)}</b> · failed items <b>${latestFails.length}</b> · linked defects <b>${latestLinked.length}</b>`:'No persisted Pre-Starts found on this running instance.';const alertClass=latest&&latestFails.length>latestLinked.length?'pipe badPipe':'pipe goodPipe';res.send(page('defects','Vehicle Defects',`<style>.defectStats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.defectStat,.pipe{background:#fff;border:1px solid #e3e8ef;border-radius:11px;padding:14px 16px}.defectStat span{display:block;font-size:11px;color:#7f8a9a;font-weight:800;text-transform:uppercase}.defectStat b{font-size:26px}.pipe{margin-bottom:16px;font-size:12px}.goodPipe{border-color:#b7e4c7;background:#f3fbf6}.badPipe{border-color:#f4b8b8;background:#fff5f5}.priority{font-weight:800;font-size:11px}.priority.HIGH{color:#b42318}.priority.MEDIUM{color:#ad7410}.priority.LOW{color:#1768c5}.defToolbar{display:flex;gap:10px;justify-content:space-between;margin-bottom:14px}.archiveHead{margin-top:26px}@media(max-width:800px){.defectStats{grid-template-columns:1fr 1fr}}</style><div class="title"><div><h1>Vehicle Defects</h1><p>Outstanding defects raised automatically from failed Pre-Start items.</p></div><button class="secondary" id="rebuild">Rebuild from Pre-Starts</button></div><div class="${alertClass}">${diag}</div><div class="defectStats"><div class="defectStat"><span>Open</span><b>${all.filter(d=>d.status==='OPEN').length}</b></div><div class="defectStat"><span>In Progress</span><b>${all.filter(d=>d.status==='IN PROGRESS').length}</b></div><div class="defectStat"><span>High Priority</span><b>${all.filter(d=>active(d)&&d.priority==='HIGH').length}</b></div><div class="defectStat"><span>Archived</span><b>${archived.length}</b></div></div><section class="panel"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Priority</th><th>Asset / Rego</th><th>Defect</th><th>Status</th><th>Action</th><th>Resolution Notes</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section><div class="sectionhead archiveHead"><div><h2>Defect Archive</h2><div class="sub">Resolved and closed defects remain linked to the asset.</div></div></div><section class="panel"><div class="tablewrap"><table><thead><tr><th>Raised</th><th>Resolved</th><th>Asset / Rego</th><th>Defect</th><th>Outcome</th><th>Notes</th></tr></thead><tbody>${archiveRows}</tbody></table></div></section><script>(()=>{document.querySelectorAll('[data-save]').forEach(b=>b.onclick=async()=>{const id=b.dataset.save,status=document.querySelector('[data-status="'+id+'"]').value,action=document.querySelector('[data-action="'+id+'"]').value,resolutionNotes=document.querySelector('[data-notes="'+id+'"]').value,r=await fetch('/api/vehicle-defects/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,action,resolutionNotes})}),j=await r.json();if(!r.ok)return alert(j.error||'Unable to save defect');location.reload()});document.getElementById('rebuild').onclick=async()=>{const r=await fetch('/api/vehicle-defects/reconcile',{method:'POST'}),j=await r.json();alert('Rebuild complete. '+j.added+' missing defect(s) restored.');location.reload()}})();</script>`))});
+router.post('/api/vehicle-defects/reconcile',(req,res)=>{const added=reconcile();res.json({ok:true,added,total:db.listDefects().length})});
+
+router.patch('/api/vehicle-defects/:id',(req,res)=>{
+  const old=db.listDefects().find(x=>String(x.id)===String(req.params.id));
+  if(!old)return res.status(404).json({error:'Defect not found'});
+  const statuses=['OPEN','IN PROGRESS','RESOLVED','CLOSED'],actions=['','REPAIR','REPLACED','CONTRACTOR'];
+  const status=String(req.body?.status||old.status).toUpperCase(),action=String(req.body?.action??old.action??'').toUpperCase(),resolutionNotes=String(req.body?.resolutionNotes??old.resolutionNotes??'').trim();
+  if(!statuses.includes(status))return res.status(400).json({error:'Invalid status'});
+  if(!actions.includes(action))return res.status(400).json({error:'Invalid action'});
+  if(['RESOLVED','CLOSED'].includes(status)&&!action)return res.status(400).json({error:'Select REPAIR, REPLACED or CONTRACTOR before resolving a defect'});
+  const now=new Date().toISOString();
+  const changes={status,action,resolutionNotes,updatedAt:now,resolvedAt:old.resolvedAt,closedAt:old.closedAt};
+  if(status==='RESOLVED'&&!changes.resolvedAt)changes.resolvedAt=now;
+  if(status==='CLOSED'){if(!changes.resolvedAt)changes.resolvedAt=now;changes.closedAt=now}
+  if(!['RESOLVED','CLOSED'].includes(status)){changes.resolvedAt=null;changes.closedAt=null}
+  const d=db.updateDefect(req.params.id,changes);
+  const a=assets.find(x=>String(x.id)===String(d.assetId));
+  if(a)a.openDefects=db.listDefects().filter(x=>String(x.assetId)===String(a.id)&&active(x)).length;
+  res.json(d);
+});
+
+router.get('/vehicle-defects',(req,res)=>{
+  reconcile();
+  const all=db.listDefects();
+  const prestarts=db.listPrestarts();
+  const latest=[...prestarts].sort((a,b)=>new Date(b.completedAt||0)-new Date(a.completedAt||0))[0]||null;
+  const latestFails=latest?(latest.results||[]).filter(x=>String(x.value||'').trim().toLowerCase()==='fail'):[];
+  const latestLinked=latest?all.filter(d=>String(d.prestartId)===String(latest.id)):[];
+  const open=all.filter(active);
+  const archived=all.filter(d=>!active(d));
+
+  const openGroups=groupByRego(open).map(([rego,items])=>{
+    items.sort((a,b)=>({HIGH:0,MEDIUM:1,LOW:2}[a.priority]??9)-({HIGH:0,MEDIUM:1,LOW:2}[b.priority]??9)||new Date(b.reportedAt)-new Date(a.reportedAt));
+    const name=items[0]?.assetName||'';
+    const groupHead=`<tr class="assetGroup"><td colspan="8"><div class="assetGroupInner"><div><b>${esc(rego)}</b><span>${esc(name)}</span></div><span class="groupCount">${items.length} outstanding defect${items.length===1?'':'s'}</span></div></td></tr>`;
+    const rows=items.map(d=>`<tr data-row="${esc(d.id)}"><td>${new Date(d.reportedAt).toLocaleString('en-AU')}</td><td><span class="priority ${esc(d.priority)}">${esc(d.priority)}</span></td><td><b>${esc(d.rego||d.assetId)}</b><div class="sub">${esc(d.assetName)}</div></td><td><b>${esc(d.defect)}</b><div class="sub">${esc(d.prestartId)}</div></td><td><select data-status="${esc(d.id)}"><option${d.status==='OPEN'?' selected':''}>OPEN</option><option${d.status==='IN PROGRESS'?' selected':''}>IN PROGRESS</option><option>RESOLVED</option><option>CLOSED</option></select></td><td><select data-action="${esc(d.id)}"><option value="">Select...</option><option${d.action==='REPAIR'?' selected':''}>REPAIR</option><option${d.action==='REPLACED'?' selected':''}>REPLACED</option><option${d.action==='CONTRACTOR'?' selected':''}>CONTRACTOR</option></select></td><td><input data-notes="${esc(d.id)}" value="${esc(d.resolutionNotes||'')}" placeholder="What was done?"></td><td><button class="primary" data-save="${esc(d.id)}">Save</button></td></tr>`).join('');
+    return groupHead+rows;
+  }).join('')||'<tr><td colspan="8"><div class="empty">No outstanding defects.</div></td></tr>';
+
+  const archiveGroups=groupByRego(archived).map(([rego,items])=>{
+    items.sort((a,b)=>new Date(b.resolvedAt||b.closedAt||b.updatedAt)-new Date(a.resolvedAt||a.closedAt||a.updatedAt));
+    const name=items[0]?.assetName||'';
+    const groupHead=`<tr class="assetGroup archiveGroup"><td colspan="6"><div class="assetGroupInner"><div><b>${esc(rego)}</b><span>${esc(name)}</span></div><span class="groupCount">${items.length} archived defect${items.length===1?'':'s'}</span></div></td></tr>`;
+    const rows=items.map(d=>`<tr><td>${new Date(d.reportedAt).toLocaleString('en-AU')}</td><td>${d.resolvedAt||d.closedAt?new Date(d.resolvedAt||d.closedAt).toLocaleString('en-AU'):'—'}</td><td><b>${esc(d.rego||d.assetId)}</b><div class="sub">${esc(d.assetName)}</div></td><td>${esc(d.defect)}</td><td><span class="pill ok">${esc(d.status)}</span><div class="sub">${esc(d.action||'—')}</div></td><td>${esc(d.resolutionNotes||'—')}</td></tr>`).join('');
+    return groupHead+rows;
+  }).join('')||'<tr><td colspan="6"><div class="empty">No archived defects yet.</div></td></tr>';
+
+  const diag=latest?`Latest Pre-Start <b>${esc(latest.id)}</b> · ${esc(latest.rego)} · result <b>${esc(latest.status)}</b> · failed items <b>${latestFails.length}</b> · linked defects <b>${latestLinked.length}</b>`:'No persisted Pre-Starts found on this running instance.';
+  const alertClass=latest&&latestFails.length>latestLinked.length?'pipe badPipe':'pipe goodPipe';
+
+  res.send(page('defects','Vehicle Defects',`
+<style>
+.defectStats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.defectStat,.pipe{background:#fff;border:1px solid #e3e8ef;border-radius:11px;padding:14px 16px}.defectStat span{display:block;font-size:11px;color:#7f8a9a;font-weight:800;text-transform:uppercase}.defectStat b{font-size:26px}.pipe{margin-bottom:16px;font-size:12px}.goodPipe{border-color:#b7e4c7;background:#f3fbf6}.badPipe{border-color:#f4b8b8;background:#fff5f5}.priority{font-weight:800;font-size:11px}.priority.HIGH{color:#b42318}.priority.MEDIUM{color:#ad7410}.priority.LOW{color:#1768c5}.archiveHead{margin-top:26px}.assetGroup td{padding:0;border-top:14px solid #f5f7fa}.assetGroup:first-child td{border-top:0}.assetGroupInner{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 15px;background:#eef5ff;border-top:1px solid #d6e5fa;border-bottom:1px solid #d6e5fa}.assetGroupInner div{display:flex;align-items:center;gap:10px}.assetGroupInner b{font-size:15px;color:#174ea6}.assetGroupInner div span{font-size:12px;color:#66758a}.groupCount{font-size:11px;font-weight:800;color:#526175;background:#fff;border:1px solid #d6e0ec;border-radius:20px;padding:5px 9px}.archiveGroup .assetGroupInner{background:#f7f8fa;border-color:#e1e5ea}.archiveGroup .assetGroupInner b{color:#4b5563}@media(max-width:800px){.defectStats{grid-template-columns:1fr 1fr}.assetGroupInner{align-items:flex-start;flex-direction:column}.assetGroupInner div{align-items:flex-start;flex-direction:column;gap:2px}}
+</style>
+<div class="title"><div><h1>Vehicle Defects</h1><p>Outstanding defects grouped by asset registration for faster maintenance review.</p></div><button class="secondary" id="rebuild">Rebuild from Pre-Starts</button></div>
+<div class="${alertClass}">${diag}</div>
+<div class="defectStats"><div class="defectStat"><span>Open</span><b>${all.filter(d=>d.status==='OPEN').length}</b></div><div class="defectStat"><span>In Progress</span><b>${all.filter(d=>d.status==='IN PROGRESS').length}</b></div><div class="defectStat"><span>High Priority</span><b>${all.filter(d=>active(d)&&d.priority==='HIGH').length}</b></div><div class="defectStat"><span>Archived</span><b>${archived.length}</b></div></div>
+<section class="panel"><div class="tablewrap"><table><thead><tr><th>Date</th><th>Priority</th><th>Asset / Rego</th><th>Defect</th><th>Status</th><th>Action</th><th>Resolution Notes</th><th></th></tr></thead><tbody>${openGroups}</tbody></table></div></section>
+<div class="sectionhead archiveHead"><div><h2>Defect Archive</h2><div class="sub">Resolved and closed defects grouped by asset registration.</div></div></div>
+<section class="panel"><div class="tablewrap"><table><thead><tr><th>Raised</th><th>Resolved</th><th>Asset / Rego</th><th>Defect</th><th>Outcome</th><th>Notes</th></tr></thead><tbody>${archiveGroups}</tbody></table></div></section>
+<script>(()=>{document.querySelectorAll('[data-save]').forEach(b=>b.onclick=async()=>{const id=b.dataset.save,status=document.querySelector('[data-status="'+id+'"]').value,action=document.querySelector('[data-action="'+id+'"]').value,resolutionNotes=document.querySelector('[data-notes="'+id+'"]').value,r=await fetch('/api/vehicle-defects/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,action,resolutionNotes})}),j=await r.json();if(!r.ok)return alert(j.error||'Unable to save defect');location.reload()});document.getElementById('rebuild').onclick=async()=>{const r=await fetch('/api/vehicle-defects/reconcile',{method:'POST'}),j=await r.json();alert('Rebuild complete. '+j.added+' missing defect(s) restored.');location.reload()}})();</script>`));
+});
+
 module.exports=router;
