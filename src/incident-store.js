@@ -7,4 +7,5 @@ function list(){ensure();try{const data=JSON.parse(fs.readFileSync(FILE,'utf8'))
 function write(rows){ensure();const tmp=FILE+'.tmp';fs.writeFileSync(tmp,JSON.stringify(rows,null,2));fs.renameSync(tmp,FILE)}
 function save(record){const rows=list();const i=rows.findIndex(x=>String(x.id)===String(record.id));if(i>=0)rows[i]=record;else rows.push(record);write(rows);return record}
 function get(id){return list().find(x=>String(x.id)===String(id))}
-module.exports={FILE,list,save,get};
+function remove(id){const rows=list();const next=rows.filter(x=>String(x.id)!==String(id));if(next.length===rows.length)return false;write(next);return true}
+module.exports={FILE,list,save,get,remove};
