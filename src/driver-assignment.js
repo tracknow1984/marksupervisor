@@ -124,8 +124,8 @@ function observeGpsRows(rows,nowMs=Date.now()){
     const fresh=Number.isFinite(gpsMs)&&gpsMs>0&&gpsMs<=nowMs+60000&&(nowMs-gpsMs)<=GPS_FRESH_MS;
     if(!fresh){asset.driverGpsState='stale';continue;}
     const lat=Number(p.lat),lon=Number(p.lon),speed=Number(p.speed)||0;
-    const prevLat=Number(asset.driverLastGpsLat),prevLon=Number(asset.driverLastGpsLon);
-    const hasPrevious=Number.isFinite(prevLat)&&Number.isFinite(prevLon);
+    const hasPrevious=asset.driverLastGpsLat!==null&&asset.driverLastGpsLat!==undefined&&asset.driverLastGpsLon!==null&&asset.driverLastGpsLon!==undefined&&Number.isFinite(Number(asset.driverLastGpsLat))&&Number.isFinite(Number(asset.driverLastGpsLon));
+    const prevLat=hasPrevious?Number(asset.driverLastGpsLat):null,prevLon=hasPrevious?Number(asset.driverLastGpsLon):null;
     const movedDistance=hasPrevious&&Number.isFinite(lat)&&Number.isFinite(lon)?distanceMetres(prevLat,prevLon,lat,lon):0;
     const moved=speed>MOVE_SPEED_KMH||movedDistance>=MOVE_DISTANCE_METRES;
     const gpsIso=new Date(gpsMs).toISOString();
