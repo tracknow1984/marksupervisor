@@ -13,5 +13,7 @@ require('./src/asset-expiry-patch');
 require('./src/prestart-registration-safety-patch');
 // Re-link clearly matching Wialon units after the token is re-entered.
 require('./src/gps-auto-link-patch');
+// Add historical Wialon route playback controls to the existing Live GPS map.
+require('./src/gps-playback-patch');
 // All pages are now mounted from isolated route modules under src/routes.
 require('./app-master.js');
