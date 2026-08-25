@@ -2,7 +2,7 @@ const express=require('express');
 const router=express.Router();
 const {assets,employees}=require('../store');
 const db=require('../persistent-store');
-const {latchDriver}=require('../driver-assignment');
+const {latchDriver,detachDriver}=require('../driver-assignment');
 const priorityFor=label=>{const s=String(label||'').toLowerCase();if(/brake|steering|tyre|wheel|seat belt|king pin|tow eye|coupling|breakaway|air system|chassis crack/.test(s))return 'HIGH';if(/light|warning|wiper|mirror|leak|suspension|bearing|exhaust/.test(s))return 'MEDIUM';return 'LOW'};
 
 router.post('/api/prestarts',(req,res)=>{
@@ -37,4 +37,22 @@ router.post('/api/prestarts',(req,res)=>{
     res.status(201).json(created);
   }catch(e){console.error('Verified prestart submit failed:',e);res.status(500).json({error:e.message||'Unable to save inspection and defects'})}
 });
+
+router.post('/api/driver-assignments/detach',(req,res)=>{
+  try{
+    const assetId=String(req.body?.assetId||'').trim();
+    const employeeId=String(req.body?.employeeId||'').trim();
+    if(!assetId)return res.status(400).json({error:'Asset is required'});
+    const asset=assets.find(a=>String(a.id)===assetId);
+    if(!asset)return res.status(404).json({error:'Asset not found'});
+    if(!asset.currentDriverEmployeeId)return res.json({ok:true,detached:false,message:'No driver is currently assigned to this asset'});
+    const released=detachDriver(asset,{reason:employeeId?'driver_self_detach':'manual_detach',expectedEmployeeId:employeeId});
+    res.set('Cache-Control','no-store');
+    res.json({ok:true,detached:true,assignment:released});
+  }catch(e){
+    if(e.code==='DRIVER_ASSIGNMENT_MISMATCH')return res.status(409).json({error:e.message});
+    res.status(500).json({error:e.message||'Unable to detach driver'});
+  }
+});
+
 module.exports=router;
