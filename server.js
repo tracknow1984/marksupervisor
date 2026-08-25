@@ -5,6 +5,8 @@ require('./src/build-sample-data').seed();
 require('./src/smart-nav-fix');
 // Install the smart grouped navigation before the app mounts its routes.
 require('./src/smart-nav-patch');
+// Add Reports into the Fleet section of the smart navigation.
+require('./src/reports-nav-patch');
 // Add user guidance for the asset expiry traffic-light status.
 require('./src/asset-expiry-legend-patch');
 // Add traffic-light expiry health indicators to the Assets register.
