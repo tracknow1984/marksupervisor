@@ -1,16 +1,25 @@
 const express=require('express');
 const app=express();
 const PORT=process.env.PORT||3000;
+const {assets}=require('./src/store');
 app.use(express.json({limit:'8mb'}));
+
+const htmlEsc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 // Shared navigation extensions and light cross-page wiring.
 app.use((req,res,next)=>{
   const originalSend=res.send.bind(res);
   res.send=(body)=>{
-    // Hotfix malformed closing brace in Pre-Start GPS helper introduced during defect integration.
-    // This restores execution of the page script so the asset dropdown is populated.
     if(typeof body==='string'&&req.path==='/prestarts'){
+      // Keep the earlier GPS helper repair, then render the critical Primary Asset list on the server.
+      // This means the selector remains usable even if later page JavaScript has an unrelated error.
       body=body.replace("&z=17&output=embed\"></iframe>'}}function captureLocation","&z=17&output=embed\"></iframe>'}}}function captureLocation");
+      const available=assets.filter(a=>!['Retired','Decommissioned','Sold'].includes(a.status));
+      const options=available.map(a=>`<option value="${htmlEsc(a.id)}">${htmlEsc(a.rego||a.id)} · ${htmlEsc(a.name)} · ${htmlEsc(a.type)}</option>`).join('');
+      body=body.replace('<select id="primary" class="bigSelect"><option value="">Select primary asset...</option></select>',`<select id="primary" class="bigSelect"><option value="">Select primary asset...</option>${options}</select>`);
+      // Independent selector safety-net: native selection and Continue activation do not depend on the large inspection script.
+      const selectorSafety=`<script>(()=>{const p=document.getElementById('primary'),b=document.getElementById('beginBtn'),preview=document.getElementById('primaryPreview');if(!p)return;const assets=${JSON.stringify(available).replace(/</g,'\\u003c')};const sync=()=>{const a=assets.find(x=>String(x.id)===String(p.value));if(b)b.disabled=!a;if(preview)preview.innerHTML=a?'<div class="assetPreview"><b>'+a.name+'</b><div class="sub">'+(a.type||'')+' · '+(a.rego||a.id)+'</div></div>':''};p.addEventListener('change',sync);sync()})();</script>`;
+      body=body.replace('</body>',selectorSafety+'</body>');
     }
     if(typeof body==='string'&&body.includes('<span class="navlabel">WORKFORCE</span>')){
       if(!body.includes('href="/prestart-history"')){const active=req.path==='/prestart-history'?'on':'';const historyLink=`<a class="${active}" href="/prestart-history" title="Pre-Start History"><span class="navicon"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span class="navtext">Pre-Start History</span><span class="navchev">›</span></a>`;body=body.replace('<span class="navlabel">WORKFORCE</span>',historyLink+'<span class="navlabel">WORKFORCE</span>')}
