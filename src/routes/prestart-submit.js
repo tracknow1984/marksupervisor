@@ -4,6 +4,10 @@ const {assets,employees}=require('../store');
 const db=require('../persistent-store');
 const {latchDriver,detachDriver}=require('../driver-assignment');
 const priorityFor=label=>{const s=String(label||'').toLowerCase();if(/brake|steering|tyre|wheel|seat belt|king pin|tow eye|coupling|breakaway|air system|chassis crack/.test(s))return 'HIGH';if(/light|warning|wiper|mirror|leak|suspension|bearing|exhaust/.test(s))return 'MEDIUM';return 'LOW'};
+const brisbaneDate=()=>{const parts=new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Brisbane',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}`};
+const validIsoDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''));
+const registrationExpired=asset=>validIsoDate(asset?.registrationExpiry)&&String(asset.registrationExpiry)<brisbaneDate();
+const displayDate=v=>{if(!validIsoDate(v))return String(v||'');const [y,m,d]=String(v).split('-');return `${d}/${m}/${y}`};
 
 router.post('/api/prestarts',(req,res)=>{
   try{
@@ -12,10 +16,25 @@ router.post('/api/prestarts',(req,res)=>{
     const employee=employeeId?employees.find(e=>String(e.id)===String(employeeId)):null;
     if(employeeId&&!employee)return res.status(400).json({error:'Selected employee was not found'});
     const employeeName=employee?[employee.firstName,employee.lastName].filter(Boolean).join(' ').trim():'';
+
+    // Safety preflight: validate every asset before any signed record is written so a
+    // multi-asset pre-start cannot partially save if one registration has expired.
+    const resolved=records.map((row,rowIndex)=>({row,rowIndex,asset:assets.find(a=>String(a.id)===String(row.assetId))}));
+    const missing=resolved.find(x=>!x.asset);
+    if(missing)return res.status(400).json({error:'Selected asset was not found'});
+    const expired=resolved.find(x=>registrationExpired(x.asset));
+    if(expired){
+      const a=expired.asset;
+      return res.status(409).json({
+        error:`Pre-start blocked: ${a.rego||a.name||a.id} registration expired on ${displayDate(a.registrationExpiry)}. Renew the registration and update the asset record before completing a pre-start.`,
+        code:'REGISTRATION_EXPIRED',
+        assetId:a.id,
+        registrationExpiry:a.registrationExpiry
+      });
+    }
+
     const created=[];
-    for(const [rowIndex,row] of records.entries()){
-      const asset=assets.find(a=>String(a.id)===String(row.assetId));
-      if(!asset)return res.status(400).json({error:'Selected asset was not found'});
+    for(const {row,rowIndex,asset} of resolved){
       if(!row.signature)return res.status(400).json({error:`Signature required for ${asset.name}`});
       const results=Array.isArray(row.results)?row.results:[];
       const failed=results.filter(x=>String(x.value||'').trim().toLowerCase()==='fail');
