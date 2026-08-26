@@ -17,6 +17,8 @@ require('./src/dashboard-kpi-future-patch');
 require('./src/dashboard-intelligence-patch');
 // Match Service Schedule width to full-width pages such as Compliance.
 require('./src/service-width-patch');
+// Make the Assets summary cards futuristic and link them directly to their issues.
+require('./src/assets-summary-future-patch');
 // Add user guidance for the asset expiry traffic-light status.
 require('./src/asset-expiry-legend-patch');
 // Add traffic-light expiry health indicators to the Assets register.
