@@ -9,6 +9,8 @@ require('./src/smart-nav-patch');
 require('./src/reports-nav-patch');
 // Mount the graphical owner/operations dashboard and make it the home page.
 require('./src/dashboard-patch');
+// Apply EWD resume/location/export safeguards before mounting the EWD router.
+require('./src/ewd-critical-fix-patch');
 // Mount the candidate Electronic Work Diary driver/compliance workflow.
 require('./src/ewd-patch');
 // Deep-link Dashboard attention items to the exact record that needs resolution.
