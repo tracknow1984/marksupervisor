@@ -9,6 +9,8 @@ require('./src/smart-nav-patch');
 require('./src/reports-nav-patch');
 // Mount the graphical owner/operations dashboard and make it the home page.
 require('./src/dashboard-patch');
+// Deep-link Dashboard attention items to the exact record that needs resolution.
+require('./src/dashboard-action-links-patch');
 // Add user guidance for the asset expiry traffic-light status.
 require('./src/asset-expiry-legend-patch');
 // Add traffic-light expiry health indicators to the Assets register.
