@@ -15,6 +15,8 @@ require('./src/dashboard-action-links-patch');
 require('./src/dashboard-kpi-future-patch');
 // Add live operational intelligence, risk scoring and Ask S365 to the Dashboard.
 require('./src/dashboard-intelligence-patch');
+// Slightly increase Dashboard typography for easier reading while preserving the compact layout.
+require('./src/dashboard-typography-patch');
 // Match Service Schedule width to full-width pages such as Compliance.
 require('./src/service-width-patch');
 // Make the Assets summary cards futuristic and link them directly to their issues.
