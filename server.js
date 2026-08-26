@@ -9,6 +9,8 @@ require('./src/smart-nav-patch');
 require('./src/reports-nav-patch');
 // Mount the graphical owner/operations dashboard and make it the home page.
 require('./src/dashboard-patch');
+// Mount the candidate Electronic Work Diary driver/compliance workflow.
+require('./src/ewd-patch');
 // Deep-link Dashboard attention items to the exact record that needs resolution.
 require('./src/dashboard-action-links-patch');
 // Make only the dashboard KPI strip compact and futuristic.
