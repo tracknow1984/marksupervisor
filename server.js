@@ -15,6 +15,8 @@ require('./src/dashboard-action-links-patch');
 require('./src/dashboard-kpi-future-patch');
 // Add live operational intelligence, risk scoring and Ask S365 to the Dashboard.
 require('./src/dashboard-intelligence-patch');
+// Match Service Schedule width to full-width pages such as Compliance.
+require('./src/service-width-patch');
 // Add user guidance for the asset expiry traffic-light status.
 require('./src/asset-expiry-legend-patch');
 // Add traffic-light expiry health indicators to the Assets register.
