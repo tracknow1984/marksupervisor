@@ -13,6 +13,8 @@ require('./src/dashboard-patch');
 require('./src/dashboard-action-links-patch');
 // Make only the dashboard KPI strip compact and futuristic.
 require('./src/dashboard-kpi-future-patch');
+// Add live operational intelligence, risk scoring and Ask S365 to the Dashboard.
+require('./src/dashboard-intelligence-patch');
 // Add user guidance for the asset expiry traffic-light status.
 require('./src/asset-expiry-legend-patch');
 // Add traffic-light expiry health indicators to the Assets register.
