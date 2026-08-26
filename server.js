@@ -11,6 +11,8 @@ require('./src/reports-nav-patch');
 require('./src/dashboard-patch');
 // Deep-link Dashboard attention items to the exact record that needs resolution.
 require('./src/dashboard-action-links-patch');
+// Make only the dashboard KPI strip compact and futuristic.
+require('./src/dashboard-kpi-future-patch');
 // Add user guidance for the asset expiry traffic-light status.
 require('./src/asset-expiry-legend-patch');
 // Add traffic-light expiry health indicators to the Assets register.
