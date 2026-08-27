@@ -3,6 +3,8 @@
 require('./src/build-sample-data').seed();
 // Install the smart navigation fix first so it can validate the injected menu HTML.
 require('./src/smart-nav-fix');
+// Make EWD a first-class Operations item in the generated smart navigation.
+require('./src/ewd-nav-core-fix');
 // Install the smart grouped navigation before the app mounts its routes.
 require('./src/smart-nav-patch');
 // Add Reports into the Fleet section of the smart navigation.
