@@ -39,3 +39,15 @@ if(!express.__sv365EwdPinAuthFixed){
     };
   };
 }
+
+if(!express.response.__sv365EwdEmployeePinCopy){
+  express.response.__sv365EwdEmployeePinCopy=true;
+  const originalSend=express.response.send;
+  express.response.send=function(body){
+    if(typeof body==='string'&&this?.req?.path==='/ewd'){
+      body=body.replace('Create a 4-8 digit EWD PIN. This will be required for future EWD sign-in and daily confirmation.','EWD PIN is not configured for this driver. Ask an administrator to set it from Employees → EWD PIN before starting.');
+      body=body.replace('createPin:!selected.hasPin,','createPin:false,');
+    }
+    return originalSend.call(this,body);
+  };
+}
