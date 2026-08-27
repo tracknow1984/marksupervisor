@@ -15,6 +15,8 @@ require('./src/dashboard-patch');
 require('./src/ewd-critical-fix-patch');
 // Mount the candidate Electronic Work Diary driver/compliance workflow.
 require('./src/ewd-patch');
+// Make Passed pre-starts hand directly into the driver EWD workflow.
+require('./src/ewd-prestart-handoff-patch');
 // Deep-link Dashboard attention items to the exact record that needs resolution.
 require('./src/dashboard-action-links-patch');
 // Make only the dashboard KPI strip compact and futuristic.
