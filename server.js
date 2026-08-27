@@ -13,6 +13,8 @@ require('./src/reports-nav-patch');
 require('./src/dashboard-patch');
 // Apply EWD resume/location/export safeguards before mounting the EWD router.
 require('./src/ewd-critical-fix-patch');
+// Make the server decide whether an EWD PIN is being created or verified.
+require('./src/ewd-pin-auth-fix');
 // Mount the candidate Electronic Work Diary driver/compliance workflow.
 require('./src/ewd-patch');
 // Make Passed pre-starts hand directly into the driver EWD workflow.
