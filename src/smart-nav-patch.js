@@ -46,6 +46,7 @@ if(!express.response.__sv365SmartNavPatched){
   const icons={
     home:'<svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9h-6v-6h-4v6H4z"/></svg>',
     operations:'<svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M8 7V4h8v3M8 12h8M8 16h5"/></svg>',
+    ewdOverview:'<svg viewBox="0 0 24 24"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4M7 13l3-3 2 2 4-5"/></svg>',
     ewd:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2M7 3 5 5M17 3l2 2"/></svg>',
     fleet:'<svg viewBox="0 0 24 24"><path d="M4 16V10a2 2 0 0 1 2-2h10l4 4v4"/><path d="M3 16h18v3H3z"/><circle cx="7" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>',
     safety:'<svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.8 2.8 8.1 7 10 4.2-1.9 7-5.2 7-10V6z"/><path d="m9 12 2 2 4-5"/></svg>',
@@ -57,6 +58,7 @@ if(!express.response.__sv365SmartNavPatched){
   const groups=[
     {id:'operations',label:'Operations',icon:icons.operations,items:[
       {label:'Pre-Starts',href:'/prestarts',desc:'Start and manage inspections'},
+      {label:'EWD Overview',href:'/ewd-overview',desc:'Monitor active fatigue, work and rest',icon:icons.ewdOverview,badge:'ewdAttention'},
       {label:'Electronic Work Diary',href:'/ewd',desc:'Driver work, rest and fatigue management',icon:icons.ewd},
       {label:'Vehicle Defects',href:'/vehicle-defects',desc:'Open defects and maintenance',badge:'defects'},
       {label:'Service Schedule',href:'/service',desc:'Upcoming fleet servicing',badge:'services'}
@@ -96,6 +98,7 @@ if(!express.response.__sv365SmartNavPatched){
 
   const actions=[
     {label:'Start Pre-Start',href:'/prestarts',desc:'Begin a vehicle or asset inspection',icon:'✓'},
+    {label:'EWD Overview',href:'/ewd-overview',desc:'Monitor all active work, rest and fatigue',icon:'▦'},
     {label:'Open Electronic Work Diary',href:'/ewd',desc:'Resume or start driver work and rest recording',icon:'◴'},
     {label:'Add Asset',href:'/assets?quick=addAsset',desc:'Create a new fleet asset',icon:'＋'},
     {label:'Add Employee',href:'/employees?quick=addEmployee',desc:'Create a staff profile',icon:'👤'},
@@ -109,7 +112,8 @@ if(!express.response.__sv365SmartNavPatched){
     {label:'Assets',href:'/assets',desc:'Fleet asset register'},
     {label:'Employees',href:'/employees',desc:'People and staff health checks'},
     {label:'Pre-Starts',href:'/prestarts',desc:'Daily inspections'},
-    {label:'Electronic Work Diary',href:'/ewd',desc:'Work, rest and fatigue management'},
+    {label:'EWD Overview',href:'/ewd-overview',desc:'Live fatigue and break monitoring'},
+    {label:'Electronic Work Diary',href:'/ewd',desc:'Driver work, rest and fatigue management'},
     {label:'Vehicle Defects',href:'/vehicle-defects',desc:'Defects and maintenance actions'},
     {label:'Service Schedule',href:'/service',desc:'Upcoming servicing'},
     {label:'Live GPS',href:'/gps',desc:'Wialon tracking'},
@@ -130,7 +134,7 @@ if(!express.response.__sv365SmartNavPatched){
 
   function setBadge(key,value,tone){const n=Math.max(0,Number(value)||0);document.querySelectorAll('[data-badge="'+key+'"]').forEach(el=>{el.textContent=n>99?'99+':String(n);el.classList.toggle('show',n>0);el.classList.toggle('alert',tone==='alert'&&n>0);el.classList.toggle('warn',tone==='warn'&&n>0)})}
   function setGroupBadge(group,value,tone){const el=document.querySelector('[data-group-badge="'+group+'"]'),n=Math.max(0,Number(value)||0);if(!el)return;el.textContent=n>99?'99+':String(n);el.classList.toggle('show',n>0);el.classList.toggle('alert',tone==='alert'&&n>0);el.classList.toggle('warn',tone==='warn'&&n>0)}
-  async function loadBadges(){let defects=0,services=0,cmp=0,people=0,overdue=0;try{const r=await fetch('/api/asset-summary',{cache:'no-store'}),d=await r.json();if(r.ok){defects=Number(d.openDefects)||0;services=Number(d.serviceDue)||0}}catch{}try{const r=await fetch('/api/compliance/documents',{cache:'no-store'}),d=await r.json();if(r.ok&&Array.isArray(d)){cmp=d.reduce((n,x)=>n+Number(x.summary?.outstanding||0),0);overdue=d.reduce((n,x)=>n+Number(x.summary?.overdue||0),0)}}catch{}try{const r=await fetch('/api/employees',{cache:'no-store'}),d=await r.json();if(r.ok&&Array.isArray(d))people=d.filter(x=>Number(x.complianceHealth?.percent||0)<100).length}catch{}setBadge('defects',defects,defects?'alert':'');setBadge('services',services,services?'warn':'');setBadge('compliance',cmp,overdue?'alert':cmp?'warn':'');setBadge('people',people,people?'warn':'');setGroupBadge('operations',defects+services,defects?'alert':services?'warn':'');setGroupBadge('safety',cmp,overdue?'alert':cmp?'warn':'');setGroupBadge('people',people,people?'warn':'')}
+  async function loadBadges(){let defects=0,services=0,cmp=0,people=0,overdue=0,ewdAttention=0,ewdCritical=0;try{const r=await fetch('/api/asset-summary',{cache:'no-store'}),d=await r.json();if(r.ok){defects=Number(d.openDefects)||0;services=Number(d.serviceDue)||0}}catch{}try{const r=await fetch('/api/ewd/overview',{cache:'no-store'}),d=await r.json();if(r.ok){ewdAttention=Number(d.summary?.attention)||0;ewdCritical=Number(d.summary?.critical)||0}}catch{}try{const r=await fetch('/api/compliance/documents',{cache:'no-store'}),d=await r.json();if(r.ok&&Array.isArray(d)){cmp=d.reduce((n,x)=>n+Number(x.summary?.outstanding||0),0);overdue=d.reduce((n,x)=>n+Number(x.summary?.overdue||0),0)}}catch{}try{const r=await fetch('/api/employees',{cache:'no-store'}),d=await r.json();if(r.ok&&Array.isArray(d))people=d.filter(x=>Number(x.complianceHealth?.percent||0)<100).length}catch{}setBadge('ewdAttention',ewdAttention,ewdCritical?'alert':ewdAttention?'warn':'');setBadge('defects',defects,defects?'alert':'');setBadge('services',services,services?'warn':'');setBadge('compliance',cmp,overdue?'alert':cmp?'warn':'');setBadge('people',people,people?'warn':'');setGroupBadge('operations',defects+services+ewdAttention,(defects||ewdCritical)?'alert':(services||ewdAttention)?'warn':'');setGroupBadge('safety',cmp,overdue?'alert':cmp?'warn':'');setGroupBadge('people',people,people?'warn':'')}
   loadBadges();setInterval(loadBadges,60000);
 
   function runQuickQuery(){const params=new URLSearchParams(location.search),q=params.get('quick');if(!q)return;const map={addAsset:'addAssetBtn',addEmployee:'addEmployee',newCompliance:'newCmp',shareLocation:'shareLive'};const id=map[q];if(!id)return;let tries=0;const timer=setInterval(()=>{tries++;const el=document.getElementById(id);if(el){clearInterval(timer);el.click();params.delete('quick');const clean=location.pathname+(params.toString()?'?'+params.toString():'')+location.hash;history.replaceState({},'',clean)}else if(tries>30)clearInterval(timer)},100)}
