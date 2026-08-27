@@ -47,6 +47,10 @@ if(!express.response.__sv365EwdEmployeePinCopy){
     if(typeof body==='string'&&this?.req?.path==='/ewd'){
       body=body.replace('Create a 4-8 digit EWD PIN. This will be required for future EWD sign-in and daily confirmation.','EWD PIN is not configured for this driver. Ask an administrator to set it from Employees → EWD PIN before starting.');
       body=body.replace('createPin:!selected.hasPin,','createPin:false,');
+      // Do not let a second browser-side regex gate reject a PIN before the shared
+      // Employee/EWD backend gets a chance to authenticate it. The backend is the
+      // single authority for PIN format, employee identity and credential matching.
+      body=body.replace("const pin=$('sPin').value.trim();if(!/^\\d{4,8}$/.test(pin))return alert('Enter a 4-8 digit EWD PIN.');","const pin=String($('sPin').value||'').trim();if(!pin)return alert('Enter your EWD PIN.');");
     }
     return originalSend.call(this,body);
   };
