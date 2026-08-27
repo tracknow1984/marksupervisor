@@ -13,12 +13,11 @@ router.post('/api/prestarts',(req,res)=>{
   try{
     const {sessionId,inspector,employeeId,records}=req.body||{};
     if(!Array.isArray(records)||!records.length)return res.status(400).json({error:'No inspection records supplied'});
-    const employee=employeeId?employees.find(e=>String(e.id)===String(employeeId)):null;
-    if(employeeId&&!employee)return res.status(400).json({error:'Selected employee was not found'});
-    const employeeName=employee?[employee.firstName,employee.lastName].filter(Boolean).join(' ').trim():'';
+    if(!employeeId)return res.status(400).json({error:'Select the driver / employee completing this pre-start. A driver is required before the Electronic Work Diary can be enabled.'});
+    const employee=employees.find(e=>String(e.id)===String(employeeId));
+    if(!employee)return res.status(400).json({error:'Selected employee was not found'});
+    const employeeName=[employee.firstName,employee.lastName].filter(Boolean).join(' ').trim();
 
-    // Safety preflight: validate every asset before any signed record is written so a
-    // multi-asset pre-start cannot partially save if one registration has expired.
     const resolved=records.map((row,rowIndex)=>({row,rowIndex,asset:assets.find(a=>String(a.id)===String(row.assetId))}));
     const missing=resolved.find(x=>!x.asset);
     if(missing)return res.status(400).json({error:'Selected asset was not found'});
@@ -27,9 +26,7 @@ router.post('/api/prestarts',(req,res)=>{
       const a=expired.asset;
       return res.status(409).json({
         error:`Pre-start blocked: ${a.rego||a.name||a.id} registration expired on ${displayDate(a.registrationExpiry)}. Renew the registration and update the asset record before completing a pre-start.`,
-        code:'REGISTRATION_EXPIRED',
-        assetId:a.id,
-        registrationExpiry:a.registrationExpiry
+        code:'REGISTRATION_EXPIRED',assetId:a.id,registrationExpiry:a.registrationExpiry
       });
     }
 
@@ -41,16 +38,16 @@ router.post('/api/prestarts',(req,res)=>{
       const now=new Date().toISOString();
       const id='PS-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,7).toUpperCase();
       const isPrimary=row.isPrimary!==undefined?!!row.isPrimary:rowIndex===0;
-      const rec={id,sessionId:sessionId||'SESSION-'+Date.now(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,employeeId:employee?.id||'',employeeName:employeeName||inspector||'Current User',inspector:employeeName||inspector||'Current User',isPrimary,completedAt:now,inspectionDate:row.inspectionDate,location:row.location||asset.location||'',address:row.address||'',latitude:Number.isFinite(Number(row.latitude))?Number(row.latitude):null,longitude:Number.isFinite(Number(row.longitude))?Number(row.longitude):null,locationAccuracy:Number.isFinite(Number(row.locationAccuracy))?Number(row.locationAccuracy):null,locationCapturedAt:row.locationCapturedAt||null,reading:Number(row.reading)||0,notes:row.notes||'',results,signature:row.signature,status:failed.length?'Failed':'Passed',failedCount:failed.length};
+      const rec={id,sessionId:sessionId||'SESSION-'+Date.now(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,employeeId:employee.id,employeeName,inspector:employeeName||inspector||'Current User',isPrimary,completedAt:now,inspectionDate:row.inspectionDate,location:row.location||asset.location||'',address:row.address||'',latitude:Number.isFinite(Number(row.latitude))?Number(row.latitude):null,longitude:Number.isFinite(Number(row.longitude))?Number(row.longitude):null,locationAccuracy:Number.isFinite(Number(row.locationAccuracy))?Number(row.locationAccuracy):null,locationCapturedAt:row.locationCapturedAt||null,reading:Number(row.reading)||0,notes:row.notes||'',results,signature:row.signature,status:failed.length?'Failed':'Passed',failedCount:failed.length};
       const defectRows=failed.map((f,i)=>({id:'DEF-'+Date.now().toString(36).toUpperCase()+'-'+i+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,prestartId:id,prestartItemId:f.itemId??('IDX-'+i),defect:f.label||'Pre-Start defect',reportedAt:now,reportedBy:rec.inspector,reading:rec.reading,location:rec.address||rec.location||'',priority:priorityFor(f.label),status:'OPEN',action:'',resolutionNotes:'',updatedAt:now,resolvedAt:null,closedAt:null}));
       db.savePrestartWithDefects(rec,defectRows);
       const savedPrestart=db.getPrestart(id);
       const savedDefects=db.listDefects().filter(d=>String(d.prestartId)===String(id));
-      if(!savedPrestart||savedDefects.length!==defectRows.length){throw new Error(`Persistence verification failed for ${id}: expected ${defectRows.length} defects, found ${savedDefects.length}`)}
+      if(!savedPrestart||savedDefects.length!==defectRows.length)throw new Error(`Persistence verification failed for ${id}: expected ${defectRows.length} defects, found ${savedDefects.length}`);
       asset.reading=rec.reading;
       asset.openDefects=db.listDefects().filter(d=>String(d.assetId)===String(asset.id)&&!['RESOLVED','CLOSED'].includes(String(d.status||'').toUpperCase())).length;
-      if(employee&&isPrimary)latchDriver(asset,employee,rec);
-      created.push({...rec,driverLatched:!!(employee&&isPrimary),defectsCreated:savedDefects.length,defectIds:savedDefects.map(d=>d.id)});
+      if(isPrimary)latchDriver(asset,employee,rec);
+      created.push({...rec,driverLatched:isPrimary,ewdEligible:isPrimary&&rec.status==='Passed',ewdUrl:isPrimary&&rec.status==='Passed'?'/ewd?employee='+encodeURIComponent(employee.id):'',defectsCreated:savedDefects.length,defectIds:savedDefects.map(d=>d.id)});
     }
     res.set('Cache-Control','no-store');
     res.status(201).json(created);
