@@ -114,7 +114,7 @@ if(!express.response.__sv365EmployeeEwdPinUi){
   };
 
   const saveEmployee=$('saveEmployee');if(saveEmployee)saveEmployee.addEventListener('click',e=>{if($('eAccess')?.value==='Driver'&&!/^\d{4,8}$/.test($('eEwdPin')?.value.trim()||'')){e.preventDefault();e.stopImmediatePropagation();$('eEwdPin')?.focus();alert('Set a 4-8 digit EWD PIN for this Driver before saving the employee.')}},true);
-  const rows=$('employeeRows');if(rows)new MutationObserver(schedule).observe(rows,{childList:true,subtree:true});
+  const rows=$('employeeRows');if(rows)new MutationObserver(schedule).observe(rows,{childList:true});
   if(!ensureCreateField()){let tries=0;const t=setInterval(()=>{tries++;if(ensureCreateField()||tries>30)clearInterval(t)},100)}
   ensureModal();refresh();
 })();</script>`;
