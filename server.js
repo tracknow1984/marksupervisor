@@ -13,6 +13,8 @@ require('./src/reports-nav-patch');
 require('./src/dashboard-patch');
 // Apply EWD resume/location/export safeguards before mounting the EWD router.
 require('./src/ewd-critical-fix-patch');
+// Use one backend path for Employee PIN save/self-test and EWD start authentication.
+require('./src/ewd-unified-auth-patch');
 // Manage permanent driver EWD PINs from Employee profiles.
 require('./src/employee-ewd-pin-patch');
 // Require the employee-configured EWD PIN when a diary starts.
