@@ -26,7 +26,7 @@ if(!express.response.__sv365SmartNavPatched){
 .smartHome{height:46px;width:58px;margin:0 auto 8px;border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 18px;position:relative;overflow:hidden}.side.smartNav:hover .smartHome,.side.smartNav.pinned .smartHome{width:248px;margin-left:1px;margin-right:1px}.smartHome:hover,.smartHome.active{background:rgba(255,255,255,.06);color:#f5f9ff}.smartHome.active{color:#46c7f3;box-shadow:inset 0 0 0 1px rgba(59,197,241,.13)}
 .smartGroup{margin:5px 0}.smartGroupButton{height:46px;width:58px;margin:0 auto;border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 18px;position:relative;overflow:hidden}.side.smartNav:hover .smartGroupButton,.side.smartNav.pinned .smartGroupButton{width:248px;margin-left:1px;margin-right:1px}.smartGroupButton:hover,.smartGroup.current .smartGroupButton{background:rgba(255,255,255,.055);color:#eef5fb}.smartGroup.current .smartGroupButton{color:#45c9f4}
 .smartNavIcon{width:22px;height:22px;display:grid;place-items:center;flex:0 0 22px}.smartNavIcon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}.smartNavLabel{font-size:12px;font-weight:800;min-width:0;flex:1;text-align:left}.smartChevron{width:15px;height:15px;transition:transform .15s}.smartGroup.open .smartChevron{transform:rotate(90deg)}
-.smartChildren{gap:2px;margin:3px 0 7px 46px;padding-left:10px;border-left:1px solid rgba(255,255,255,.075)}.smartChild{min-height:34px;border-radius:8px;padding:8px 9px;display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:11px;font-weight:690;text-align:left}.smartChild:hover{background:rgba(255,255,255,.055);color:#f4f8fb}.smartChild.active{background:rgba(46,153,211,.12);color:#4bcdf5}
+.smartChildren{gap:2px;margin:3px 0 7px 46px;padding-left:10px;border-left:1px solid rgba(255,255,255,.075)}.smartChild{min-height:34px;border-radius:8px;padding:8px 9px;display:flex;align-items:center;justify-content:space-between;gap:9px;font-size:11px;font-weight:690;text-align:left}.smartChild:hover{background:rgba(255,255,255,.055);color:#f4f8fb}.smartChild.active{background:rgba(46,153,211,.12);color:#4bcdf5}.smartChildMain{display:flex;align-items:center;gap:7px;min-width:0}.smartChildIcon{width:16px;height:16px;display:grid;place-items:center;flex:0 0 16px;color:#4bcdf5}.smartChildIcon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .smartBadge{display:none;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#24344a;color:#b9c6d5;font-size:9px;font-weight:900;align-items:center;justify-content:center}.smartBadge.show{display:inline-flex}.smartBadge.alert{background:#5b2727;color:#ffd5d5}.smartBadge.warn{background:#4a3a1f;color:#ffe1a8}
 .smartSectionLine{height:1px;background:rgba(255,255,255,.055);margin:10px 9px}
 .side.smartNav .sidefoot{padding:10px 9px 14px}.side.smartNav .profileWrap,.side.smartNav .buildWrap{width:58px;margin:auto;transition:width .15s}.side.smartNav:hover .profileWrap,.side.smartNav:hover .buildWrap,.side.smartNav.pinned .profileWrap,.side.smartNav.pinned .buildWrap{width:248px}.side.smartNav .profileIcon,.side.smartNav .buildDot{margin:0;width:46px;flex:0 0 46px}.smartFootRow{display:flex;align-items:center;gap:11px;overflow:hidden}.smartFootCopy b{display:block;color:#cdd7e2;font-size:10px}.smartFootCopy span{color:#65758a;font-size:9px}.side.smartNav .buildDot{height:30px}.smartBuildText{font-size:9px;color:#77879b}
@@ -46,6 +46,7 @@ if(!express.response.__sv365SmartNavPatched){
   const icons={
     home:'<svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9h-6v-6h-4v6H4z"/></svg>',
     operations:'<svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M8 7V4h8v3M8 12h8M8 16h5"/></svg>',
+    ewd:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2M7 3 5 5M17 3l2 2"/></svg>',
     fleet:'<svg viewBox="0 0 24 24"><path d="M4 16V10a2 2 0 0 1 2-2h10l4 4v4"/><path d="M3 16h18v3H3z"/><circle cx="7" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>',
     safety:'<svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.8 2.8 8.1 7 10 4.2-1.9 7-5.2 7-10V6z"/><path d="m9 12 2 2 4-5"/></svg>',
     people:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M14 15.5a4.5 4.5 0 0 1 6.5 4"/></svg>',
@@ -56,6 +57,7 @@ if(!express.response.__sv365SmartNavPatched){
   const groups=[
     {id:'operations',label:'Operations',icon:icons.operations,items:[
       {label:'Pre-Starts',href:'/prestarts',desc:'Start and manage inspections'},
+      {label:'Electronic Work Diary',href:'/ewd',desc:'Driver work, rest and fatigue management',icon:icons.ewd},
       {label:'Vehicle Defects',href:'/vehicle-defects',desc:'Open defects and maintenance',badge:'defects'},
       {label:'Service Schedule',href:'/service',desc:'Upcoming fleet servicing',badge:'services'}
     ]},
@@ -83,7 +85,7 @@ if(!express.response.__sv365SmartNavPatched){
   const nav=side.querySelector('.nav');
   if(!nav)return;
   nav.className='smartNavBody';
-  const groupHtml=groups.map(g=>'<div class="smartGroup '+(g.id===currentGroup?'open ':'')+(g.items.some(i=>activeFor(i.href))?'current':'')+'" data-smart-group="'+g.id+'"><button type="button" class="smartGroupButton"><span class="smartNavIcon">'+g.icon+'</span><span class="smartNavLabel smartReveal">'+g.label+'</span><span class="smartBadge smartReveal" data-group-badge="'+g.id+'"></span><span class="smartChevron smartReveal">'+icons.chevron+'</span></button><div class="smartChildren smartReveal">'+g.items.map(i=>'<a class="smartChild '+(activeFor(i.href)?'active':'')+'" href="'+i.href+'" data-nav-label="'+i.label+'"><span>'+i.label+'</span>'+(i.badge?'<span class="smartBadge" data-badge="'+i.badge+'"></span>':'')+'</a>').join('')+'</div></div>').join('');
+  const groupHtml=groups.map(g=>'<div class="smartGroup '+(g.id===currentGroup?'open ':'')+(g.items.some(i=>activeFor(i.href))?'current':'')+'" data-smart-group="'+g.id+'"><button type="button" class="smartGroupButton"><span class="smartNavIcon">'+g.icon+'</span><span class="smartNavLabel smartReveal">'+g.label+'</span><span class="smartBadge smartReveal" data-group-badge="'+g.id+'"></span><span class="smartChevron smartReveal">'+icons.chevron+'</span></button><div class="smartChildren smartReveal">'+g.items.map(i=>'<a class="smartChild '+(activeFor(i.href)?'active':'')+'" href="'+i.href+'" data-nav-label="'+i.label+'"><span class="smartChildMain">'+(i.icon?'<span class="smartChildIcon">'+i.icon+'</span>':'')+'<span>'+i.label+'</span></span>'+(i.badge?'<span class="smartBadge" data-badge="'+i.badge+'"></span>':'')+'</a>').join('')+'</div></div>').join('');
   nav.innerHTML='<button type="button" class="smartQuick" id="smartQuick"><span class="smartQuickIcon">+</span><span class="smartQuickText smartReveal">Quick Action</span></button><a class="smartHome '+(path==='/assets'||path==='/')?'active':''+'" href="/assets" data-nav-label="Home"><span class="smartNavIcon">'+icons.home+'</span><span class="smartNavLabel smartReveal">Home</span></a><div class="smartSectionLine"></div>'+groupHtml;
   const pin=document.getElementById('smartPin');
   const pinned=localStorage.getItem('sv365.smartPinned')==='1';if(pinned)side.classList.add('pinned');
@@ -94,6 +96,7 @@ if(!express.response.__sv365SmartNavPatched){
 
   const actions=[
     {label:'Start Pre-Start',href:'/prestarts',desc:'Begin a vehicle or asset inspection',icon:'✓'},
+    {label:'Open Electronic Work Diary',href:'/ewd',desc:'Resume or start driver work and rest recording',icon:'◴'},
     {label:'Add Asset',href:'/assets?quick=addAsset',desc:'Create a new fleet asset',icon:'＋'},
     {label:'Add Employee',href:'/employees?quick=addEmployee',desc:'Create a staff profile',icon:'👤'},
     {label:'New Compliance Document',href:'/compliance?quick=newCompliance',desc:'Distribute a new compliance item',icon:'✓'},
@@ -106,6 +109,7 @@ if(!express.response.__sv365SmartNavPatched){
     {label:'Assets',href:'/assets',desc:'Fleet asset register'},
     {label:'Employees',href:'/employees',desc:'People and staff health checks'},
     {label:'Pre-Starts',href:'/prestarts',desc:'Daily inspections'},
+    {label:'Electronic Work Diary',href:'/ewd',desc:'Work, rest and fatigue management'},
     {label:'Vehicle Defects',href:'/vehicle-defects',desc:'Defects and maintenance actions'},
     {label:'Service Schedule',href:'/service',desc:'Upcoming servicing'},
     {label:'Live GPS',href:'/gps',desc:'Wialon tracking'},
