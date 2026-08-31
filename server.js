@@ -7,6 +7,9 @@ require('./src/company-onboarding-patch');
 require('./src/smart-nav-fix');
 // Make EWD a first-class Operations item in the generated smart navigation.
 require('./src/ewd-nav-core-fix');
+// Monitor GPS geofence departures against Passed pre-starts and surface critical system alerts.
+// This loads before smart-nav so its UI wrapper receives the completed smart navigation HTML.
+require('./src/geofence-prestart-alert-patch');
 // Install the smart grouped navigation before the app mounts its routes.
 require('./src/smart-nav-patch');
 // Add Reports into the Fleet section of the smart navigation.
