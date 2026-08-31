@@ -54,6 +54,8 @@ require('./src/asset-expiry-legend-patch');
 require('./src/asset-expiry-patch');
 // Prevent expired registrations from being selected for pre-start inspections.
 require('./src/prestart-registration-safety-patch');
+// Require a Fitness for Duty declaration before a pre-start signature can be captured.
+require('./src/prestart-fitness-duty-ui-patch');
 // Re-link clearly matching Wialon units after the token is re-entered.
 require('./src/gps-auto-link-patch');
 // Keep GPS linking one-to-one and remove already-linked assets/units from availability.
