@@ -8,6 +8,16 @@ const brisbaneDate=()=>{const parts=new Intl.DateTimeFormat('en-AU',{timeZone:'A
 const validIsoDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''));
 const registrationExpired=asset=>validIsoDate(asset?.registrationExpiry)&&String(asset.registrationExpiry)<brisbaneDate();
 const displayDate=v=>{if(!validIsoDate(v))return String(v||'');const [y,m,d]=String(v).split('-');return `${d}/${m}/${y}`};
+const FITNESS_DECLARATION_VERSION='2026-08-31';
+const FITNESS_DECLARATION={
+  heading:'I hereby declare and confirm the following before commencing my shift:',
+  items:[
+    {title:'Fatigue Management',text:'I have had the required restorative rest break, feel adequately slept, and am not impaired by fatigue.'},
+    {title:'Alcohol and Other Drugs',text:'I am completely free from the influence of alcohol, illicit drugs, or any prescription/over-the-counter medications that may impair my driving ability or cognitive judgment.'},
+    {title:'Physical & Mental Health',text:'I am not suffering from any temporary illness, injury, medical episode, or extreme psychological/emotional distress that makes me unfit to operate a heavy vehicle safely.'},
+    {title:'Compliance & Obligations',text:'I understand my primary duty under the Heavy Vehicle National Law (HVNL) to stop driving or step away immediately if my fitness for duty changes during my shift.'}
+  ]
+};
 
 router.post('/api/prestarts',(req,res)=>{
   try{
@@ -32,18 +42,21 @@ router.post('/api/prestarts',(req,res)=>{
 
     const created=[];
     for(const {row,rowIndex,asset} of resolved){
+      if(row.fitnessForDutyAccepted!==true)return res.status(400).json({error:`Fitness for Duty declaration must be confirmed before signing the pre-start for ${asset.name}`,code:'FITNESS_DECLARATION_REQUIRED',assetId:asset.id});
       if(!row.signature)return res.status(400).json({error:`Signature required for ${asset.name}`});
       const results=Array.isArray(row.results)?row.results:[];
       const failed=results.filter(x=>String(x.value||'').trim().toLowerCase()==='fail');
       const now=new Date().toISOString();
+      const acceptedAt=Number.isFinite(Date.parse(String(row.fitnessForDutyAcceptedAt||'')))?new Date(row.fitnessForDutyAcceptedAt).toISOString():now;
       const id='PS-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,7).toUpperCase();
       const isPrimary=row.isPrimary!==undefined?!!row.isPrimary:rowIndex===0;
-      const rec={id,sessionId:sessionId||'SESSION-'+Date.now(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,employeeId:employee.id,employeeName,inspector:employeeName||inspector||'Current User',isPrimary,completedAt:now,inspectionDate:row.inspectionDate,location:row.location||asset.location||'',address:row.address||'',latitude:Number.isFinite(Number(row.latitude))?Number(row.latitude):null,longitude:Number.isFinite(Number(row.longitude))?Number(row.longitude):null,locationAccuracy:Number.isFinite(Number(row.locationAccuracy))?Number(row.locationAccuracy):null,locationCapturedAt:row.locationCapturedAt||null,reading:Number(row.reading)||0,notes:row.notes||'',results,signature:row.signature,status:failed.length?'Failed':'Passed',failedCount:failed.length};
+      const rec={id,sessionId:sessionId||'SESSION-'+Date.now(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,employeeId:employee.id,employeeName,inspector:employeeName||inspector||'Current User',isPrimary,completedAt:now,inspectionDate:row.inspectionDate,location:row.location||asset.location||'',address:row.address||'',latitude:Number.isFinite(Number(row.latitude))?Number(row.latitude):null,longitude:Number.isFinite(Number(row.longitude))?Number(row.longitude):null,locationAccuracy:Number.isFinite(Number(row.locationAccuracy))?Number(row.locationAccuracy):null,locationCapturedAt:row.locationCapturedAt||null,reading:Number(row.reading)||0,notes:row.notes||'',results,signature:row.signature,fitnessForDutyDeclaration:{accepted:true,acceptedAt,version:FITNESS_DECLARATION_VERSION,heading:FITNESS_DECLARATION.heading,items:FITNESS_DECLARATION.items},status:failed.length?'Failed':'Passed',failedCount:failed.length};
       const defectRows=failed.map((f,i)=>({id:'DEF-'+Date.now().toString(36).toUpperCase()+'-'+i+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,prestartId:id,prestartItemId:f.itemId??('IDX-'+i),defect:f.label||'Pre-Start defect',reportedAt:now,reportedBy:rec.inspector,reading:rec.reading,location:rec.address||rec.location||'',priority:priorityFor(f.label),status:'OPEN',action:'',resolutionNotes:'',updatedAt:now,resolvedAt:null,closedAt:null}));
       db.savePrestartWithDefects(rec,defectRows);
       const savedPrestart=db.getPrestart(id);
       const savedDefects=db.listDefects().filter(d=>String(d.prestartId)===String(id));
       if(!savedPrestart||savedDefects.length!==defectRows.length)throw new Error(`Persistence verification failed for ${id}: expected ${defectRows.length} defects, found ${savedDefects.length}`);
+      if(!savedPrestart.fitnessForDutyDeclaration?.accepted)throw new Error(`Fitness for Duty declaration persistence verification failed for ${id}`);
       asset.reading=rec.reading;
       asset.openDefects=db.listDefects().filter(d=>String(d.assetId)===String(asset.id)&&!['RESOLVED','CLOSED'].includes(String(d.status||'').toUpperCase())).length;
       if(isPrimary)latchDriver(asset,employee,rec);
