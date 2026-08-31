@@ -50,6 +50,8 @@ require('./src/asset-expiry-patch');
 require('./src/prestart-registration-safety-patch');
 // Re-link clearly matching Wialon units after the token is re-entered.
 require('./src/gps-auto-link-patch');
+// Keep GPS linking one-to-one and remove already-linked assets/units from availability.
+require('./src/gps-link-availability-patch');
 // Add historical Wialon route playback controls to the existing Live GPS map.
 require('./src/gps-playback-patch');
 // Normalise Wialon report result formats and retrieve report rows before the main Reports wrapper.
