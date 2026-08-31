@@ -24,6 +24,8 @@ require('./src/ewd-critical-fix-patch');
 require('./src/ewd-unified-auth-patch');
 // Manage permanent driver EWD PINs from Employee profiles.
 require('./src/employee-ewd-pin-patch');
+// Display employee licence expiry dates in Australian day/month/year format.
+require('./src/employee-date-format-patch');
 // Require the employee-configured EWD PIN when a diary starts.
 require('./src/ewd-pin-auth-fix');
 // Mount the candidate Electronic Work Diary driver/compliance workflow.
