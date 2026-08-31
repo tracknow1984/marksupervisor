@@ -56,6 +56,8 @@ require('./src/asset-expiry-patch');
 require('./src/prestart-registration-safety-patch');
 // Require a Fitness for Duty declaration before a pre-start signature can be captured.
 require('./src/prestart-fitness-duty-ui-patch');
+// Pull Wialon mileage into vehicle pre-starts and reconcile signed dash odometers back to Wialon.
+require('./src/prestart-wialon-odometer-patch');
 // Re-link clearly matching Wialon units after the token is re-entered.
 require('./src/gps-auto-link-patch');
 // Keep GPS linking one-to-one and remove already-linked assets/units from availability.
