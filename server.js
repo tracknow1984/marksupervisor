@@ -3,6 +3,8 @@
 require('./src/build-sample-data').seed();
 // Mount public company registration, authentication, 2FA and employee onboarding.
 require('./src/company-onboarding-patch');
+// Standardise row/list action controls as icon-only actions across the site.
+require('./src/global-action-icons-patch');
 // Install the smart navigation fix first so it can validate the injected menu HTML.
 require('./src/smart-nav-fix');
 // Make EWD a first-class Operations item in the generated smart navigation.
