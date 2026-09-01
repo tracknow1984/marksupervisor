@@ -61,6 +61,7 @@ app.use((req,res,next)=>{
     return originalSend(body);
   };next();
 });
+app.use(require('./src/routes/modules'));
 app.use(require('./src/routes/assets'));
 app.use(require('./src/routes/asset-qr'));
 app.use(require('./src/routes/employees'));

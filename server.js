@@ -22,6 +22,8 @@ require('./src/smart-nav-patch');
 require('./src/reports-nav-patch');
 // Mount the graphical owner/operations dashboard and make it the home page.
 require('./src/dashboard-patch');
+// Make the platform modular and expose the persistent internal Modules Store.
+require('./src/module-nav-patch');
 // Apply EWD resume/location/export safeguards before mounting the EWD router.
 require('./src/ewd-critical-fix-patch');
 // Use one backend path for Employee PIN save/self-test and EWD start authentication.
