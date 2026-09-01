@@ -4,7 +4,7 @@
   "description": "Supervisor365 fleet and operations management system",
   "main": "server.js",
   "scripts": {
-    "start": "node scripts/prestart-source-check.js && node server.js",
+    "start": "node server.js",
     "test:prestart": "node scripts/prestart-source-check.js",
     "data:flush": "node scripts/flush-build-data.js"
   },
