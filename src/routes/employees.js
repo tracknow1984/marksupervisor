@@ -3,6 +3,7 @@ const router=express.Router();
 const {page}=require('../layout');
 const {employees}=require('../store');
 const mailer=require('../company-mailer');
+const healthStore=require('../employee-health-store');
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const isoDate=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||''))?String(v):'';
@@ -32,7 +33,15 @@ function normaliseCompliance(employee){
 
 function publicEmployee(employee){
   normaliseCompliance(employee);
-  return {...employee,complianceHealth:complianceState(employee)};
+  const audit=healthStore.get(employee.id)||{};
+  return {...employee,
+    complianceHealthLastSentAt:audit.lastSentAt||employee.complianceHealthLastSentAt||null,
+    complianceHealthLastSentTo:audit.lastSentTo||employee.complianceHealthLastSentTo||'',
+    complianceHealthLastSentPercent:Number.isFinite(Number(audit.lastSentPercent))?Number(audit.lastSentPercent):(employee.complianceHealthLastSentPercent??null),
+    complianceHealthLastSentOutstanding:Array.isArray(audit.lastSentOutstanding)?audit.lastSentOutstanding:(employee.complianceHealthLastSentOutstanding||[]),
+    complianceHealthSendHistory:Array.isArray(audit.sendHistory)?audit.sendHistory:(employee.complianceHealthSendHistory||[]),
+    complianceHealth:complianceState(employee)
+  };
 }
 
 function healthSummary(employee){
@@ -93,7 +102,7 @@ router.post('/api/employees/:id/compliance/send-summary',async(req,res)=>{
     employee.complianceHealthLastSentTo=to;
     employee.complianceHealthLastSentPercent=summary.state.percent;
     employee.complianceHealthLastSentOutstanding=summary.outstanding;
-    employee.complianceHealthSendHistory=[...(Array.isArray(employee.complianceHealthSendHistory)?employee.complianceHealthSendHistory:[]),entry].slice(-50);
+    healthStore.recordSend(employee.id,entry);
     res.set('Cache-Control','no-store');
     res.json({ok:true,employee:publicEmployee(employee),sent:entry});
   }catch(e){console.error('Employee compliance health summary email failed',e);res.status(500).json({error:'Unable to send employee health check summary'})}
