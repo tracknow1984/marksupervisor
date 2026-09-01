@@ -26,6 +26,15 @@ function tenantKey(value){const key=String(value||'default').trim().replace(/[^a
 function enabledIds(companyId){const d=read(),entry=d.companies[tenantKey(companyId)]||{},stored=Array.isArray(entry.enabled)?entry.enabled.filter(x=>VALID_IDS.has(x)):[];return[...new Set([...BASE_IDS,...stored])]}
 function expandRequirements(ids){const out=new Set(ids);let changed=true;while(changed){changed=false;for(const item of CATALOG){if(!out.has(item.id))continue;for(const dep of item.requires||[])if(!out.has(dep)){out.add(dep);changed=true}}}return out}
 function snapshot(companyId){const enabled=new Set(enabledIds(companyId));return{baseIds:[...BASE_IDS],enabledIds:[...enabled],items:CATALOG.map(item=>({...item,enabled:enabled.has(item.id),base:!!item.base}))}}
+function commitSelection(companyId,moduleIds){
+  if(!Array.isArray(moduleIds))throw new Error('Select the modules to commit');
+  const requested=moduleIds.filter(x=>VALID_IDS.has(x));
+  const selected=expandRequirements(new Set([...BASE_IDS,...requested]));
+  const d=read(),key=tenantKey(companyId);
+  d.companies[key]={enabled:[...selected].filter(x=>!BASE_IDS.includes(x)),updatedAt:new Date().toISOString()};
+  write(d);
+  return snapshot(key);
+}
 function setEnabled(companyId,moduleId,on){
   const id=String(moduleId||'').trim();
   if(!VALID_IDS.has(id))throw new Error('Unknown Supervisor365 module');
@@ -47,4 +56,4 @@ function setEnabled(companyId,moduleId,on){
 }
 function routeMap(){return Object.fromEntries(CATALOG.map(item=>[item.id,[...item.routes]]))}
 
-module.exports={FILE,CATALOG,BASE_IDS,tenantKey,enabledIds,snapshot,setEnabled,routeMap};
+module.exports={FILE,CATALOG,BASE_IDS,tenantKey,enabledIds,snapshot,commitSelection,setEnabled,routeMap};
