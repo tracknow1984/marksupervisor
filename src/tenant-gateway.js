@@ -21,7 +21,7 @@ function createPool(){
     await new Promise(resolve=>{if(entry.child.exitCode!==null)return resolve();const timer=setTimeout(()=>entry.child.kill('SIGKILL'),5000);entry.child.once('exit',()=>{clearTimeout(timer);resolve()});entry.child.kill('SIGTERM')});
     if(workers.get(entry.id)===entry)workers.delete(entry.id);
   }
-  function monitoring(entry){try{const d=JSON.parse(fs.readFileSync(path.join(entry.dir,'geofence-prestart-alerts.json'),'utf8'));return(d.rules||[]).some(r=>r.enabled!==false)}catch(e){return e.code!=='ENOENT'}}
+  function monitoring(entry){try{const job=JSON.parse(fs.readFileSync(path.join(entry.dir,'rego-bulk.json'),'utf8'));if(['running','pausing'].includes(job.state))return true}catch(e){if(e.code!=='ENOENT')return true}try{const d=JSON.parse(fs.readFileSync(path.join(entry.dir,'geofence-prestart-alerts.json'),'utf8'));return(d.rules||[]).some(r=>r.enabled!==false)}catch(e){return e.code!=='ENOENT'}}
   async function acquire(id){
     let entry=workers.get(id);
     if(entry&&!entry.stopping){entry.active++;try{await entry.ready;return entry}catch(e){entry.active--;throw e}}

@@ -47,6 +47,7 @@ function guardText(text) {
 }
 const stages={runtime:'Starting registration browser',welcome:'Opening Queensland Transport',terms:'Opening TMR terms',accept:'Accepting TMR terms',form:'Entering registration',search:'Searching TMR',result:'Reading registration result'};
 async function lookup(rego,onProgress=()=>{}) {
+  const release=require('./rego-lock').acquire();
   let browser, page, timer, stage='runtime';
   const progress=next=>{stage=next;onProgress(stages[next])};
   try {
@@ -60,7 +61,7 @@ async function lookup(rego,onProgress=()=>{}) {
     page.setDefaultNavigationTimeout(20000);
     progress('welcome');
     const response=await page.goto(SOURCE,{waitUntil:'domcontentloaded'});
-    if(response && response.status()>=400)throw new CheckError('upstream','TMR returned HTTP '+response.status()+'. No registration details were changed.');
+    if(response && response.status()>=400)throw new CheckError(response.status()===429?'rate_limited':'upstream','TMR returned HTTP '+response.status()+'. No registration details were changed.');
     guardText(await page.locator('body').innerText());
     progress('terms');
     await page.getByRole('button',{name:'Continue',exact:true}).or(page.getByRole('link',{name:'Continue',exact:true})).click();
@@ -79,6 +80,7 @@ async function lookup(rego,onProgress=()=>{}) {
     guardText(text);
     return parseResult(text);
   } catch (e) {
+    if(page&&stage!=='runtime'&&!(e instanceof CheckError)){try{const visible=await page.locator('body').innerText({timeout:1500});guardText(visible);if(/no (?:matching |registration |vehicle |vessel )?(?:records?|results?|found)|(?:registration|vehicle|vessel)[^\n]{0,80}(?:not found|could not be found)|invalid registration number/i.test(visible))e=new CheckError('no_match','TMR did not find this registration. Existing details were kept.')}catch(problem){if(problem instanceof CheckError)e=problem}}
     // Log stage and exception type; only browser-start errors include text, before any fleet data is entered.
     console.error(JSON.stringify({event:'rego_lookup_failed',stage,error:e.name,code:e.code||'',...(stage==='runtime'?{detail:String(e.message).slice(0,1600)}:{})}));
     if(e instanceof CheckError){e.stage=stage;throw e}
@@ -87,6 +89,7 @@ async function lookup(rego,onProgress=()=>{}) {
   } finally {
     clearTimeout(timer);
     if (browser) await browser.close().catch(()=>{});
+    release();
   }
 }
 function createChecker(assets, provider=lookup) {
