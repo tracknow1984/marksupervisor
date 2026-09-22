@@ -56,32 +56,43 @@ function guardText(text) {
   if (/verify (?:that )?you are human|checking your browser|unusual traffic|automated queries|access denied|request blocked/i.test(text))
     throw new CheckError('blocked','TMR requires a manual check or has blocked this request. Open the official checker. Existing details were kept.');
 }
-async function lookup(rego) {
-  const {chromium: playwright} = require('playwright-core');
-  const chromium = (await import('@sparticuz/chromium')).default;
-  let browser, timer;
+const stages={runtime:'Starting registration browser',welcome:'Opening Queensland Transport',terms:'Opening TMR terms',accept:'Accepting TMR terms',form:'Entering registration',search:'Searching TMR',result:'Reading registration result'};
+async function lookup(rego,onProgress=()=>{}) {
+  let browser, page, timer, stage='runtime';
+  const progress=next=>{stage=next;onProgress(stages[next])};
   try {
+    progress('runtime');
+    const {chromium: playwright} = require('playwright-core');
+    const chromium = (await import('@sparticuz/chromium')).default;
     browser = await playwright.launch({executablePath:await chromium.executablePath(),args:chromium.args.filter(arg=>!/^--(?:allow-running-insecure-content|disable-web-security|disable-site-isolation-trials|disable-features)/.test(arg)),headless:true,timeout:20000});
     timer = setTimeout(()=>browser.close().catch(()=>{}),55000);
-    const page = await browser.newPage({locale:'en-AU'});
+    page = await browser.newPage({locale:'en-AU'});
     page.setDefaultTimeout(12000);
     page.setDefaultNavigationTimeout(20000);
-    await page.goto(SOURCE,{waitUntil:'domcontentloaded'});
+    progress('welcome');
+    const response=await page.goto(SOURCE,{waitUntil:'domcontentloaded'});
+    if(response && response.status()>=400)throw new CheckError('upstream','TMR returned HTTP '+response.status()+'. No registration details were changed.');
     guardText(await page.locator('body').innerText());
+    progress('terms');
     await page.getByRole('button',{name:'Continue',exact:true}).or(page.getByRole('link',{name:'Continue',exact:true})).click();
+    progress('accept');
     await page.getByRole('button',{name:'Accept',exact:true}).click();
     guardText(await page.locator('body').innerText());
+    progress('form');
     await page.getByRole('textbox',{name:/^Registration number/}).fill(rego);
+    progress('search');
     await page.getByRole('main').getByRole('button',{name:'Search',exact:true}).click();
-    // The result is a separate page. If TMR changes the form or presents a challenge,
-    // fail closed rather than interpreting unrelated dates or retrying around it.
+    progress('result');
     await page.getByText(/^(Registration status|Status):?$/i).first().waitFor({state:'visible',timeout:15000});
     const text = await page.getByRole('main').innerText();
     guardText(text);
     return parseResult(text);
   } catch (e) {
-    if (e instanceof CheckError) throw e;
-    throw new CheckError('unavailable','The TMR check could not complete. Try the official checker. Existing details were kept.');
+    // Log stage and exception type; only browser-start errors include text, before any fleet data is entered.
+    console.error(JSON.stringify({event:'rego_lookup_failed',stage,error:e.name,code:e.code||'',...(stage==='runtime'?{detail:String(e.message).slice(0,1600)}:{})}));
+    if(e instanceof CheckError){e.stage=stage;throw e}
+    const failure=new CheckError('unavailable',stages[stage]+' failed. Existing registration details were kept. Reference: '+stage+'.');
+    failure.stage=stage;throw failure;
   } finally {
     clearTimeout(timer);
     if (browser) await browser.close().catch(()=>{});
@@ -101,7 +112,9 @@ function createChecker(assets, provider=lookup) {
     const attempt={id:crypto.randomUUID(),attemptedAt:new Date().toISOString(),by:String(user||'Company administrator'),source:SOURCE,terms:TERMS};
     const snapshot=JSON.stringify([identity,asset.registrationExpiry,asset.registrationStatus]);
     try {
-      const result=await provider(identity.rego);
+      const report=message=>{const i=assets.findIndex(a=>a.id===id);if(i>=0)assets[i]={...assets[i],registrationCheck:{...attempt,state:'running',message}}};
+      report('Starting registration check');
+      const result=await provider(identity.rego,report);
       const currentIndex=assets.findIndex(a=>a.id===id);
       if(currentIndex<0)throw new CheckError('missing','Asset no longer exists');
       const current=assets[currentIndex];
@@ -113,7 +126,7 @@ function createChecker(assets, provider=lookup) {
       return {ok:true,check:record,asset:assets[currentIndex]};
     } catch(e) {
       const currentIndex=assets.findIndex(a=>a.id===id);
-      const record={...attempt,state:e.code||'unavailable',message:e instanceof CheckError?e.message:'The check failed. Existing details were kept.'};
+      const record={...attempt,state:e.code||'unavailable',stage:e.stage||'',message:e instanceof CheckError?e.message:'The check failed. Existing details were kept.'};
       if(currentIndex>=0){const current=assets[currentIndex];assets[currentIndex]={...current,registrationCheck:record,registrationCheckHistory:[...(current.registrationCheckHistory||[]),record].slice(-20)}}
       return {ok:false,check:record};
     } finally { busy=false; }
