@@ -54,15 +54,15 @@ if(!express.response.__sv365GpsLinkAvailabilityUiPatched){
 (()=>{
   if(location.pathname!=='/gps-integration')return;
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  let assetRows=[],filtering=false,observer=null;
+  let assetRows=[],assetsLoaded=false,filtering=false,observer=null;
 
   function linkedAssets(){return assetRows.filter(a=>String(a.wialonUnitId||'').trim())}
   function availableAssets(){return assetRows.filter(a=>!String(a.wialonUnitId||'').trim())}
   function usedUnitIds(){return new Set(linkedAssets().map(a=>String(a.wialonUnitId||'').trim()).filter(Boolean))}
 
   function filterAvailableTable(){
-    if(filtering)return;
-    const body=document.getElementById('links');if(!body)return;
+    if(filtering||!assetsLoaded)return;
+    const body=document.getElementById('links');if(!body||body.dataset.loadState!=='ready')return;
     filtering=true;
     try{
       const availableIds=new Set(availableAssets().map(a=>String(a.id)));
@@ -76,7 +76,7 @@ if(!express.response.__sv365GpsLinkAvailabilityUiPatched){
         }
       });
       const remaining=body.querySelectorAll('tr [data-save]').length;
-      if(!remaining)body.innerHTML='<tr><td colspan="4"><div class="gpsAvailableEmpty">All eligible assets are already linked to GPS units.</div></td></tr>';
+      if(!remaining&&assetRows.length&&!body.querySelector('.gpsAvailableEmpty'))body.innerHTML='<tr><td colspan="4"><div class="gpsAvailableEmpty">All eligible assets are already linked to GPS units.</div></td></tr>';
     }finally{filtering=false}
   }
 
@@ -114,7 +114,7 @@ if(!express.response.__sv365GpsLinkAvailabilityUiPatched){
   }
 
   async function loadAssets(){
-    try{const r=await nativeFetch('/api/assets',{cache:'no-store'}),d=await r.json();if(!r.ok||!Array.isArray(d))return;assetRows=d;watchAvailability();filterAvailableTable();renderLinked()}catch{}
+    try{const r=await nativeFetch('/api/assets',{cache:'no-store'}),d=await r.json();if(!r.ok||!Array.isArray(d))return;assetRows=d;assetsLoaded=true;watchAvailability();filterAvailableTable();renderLinked()}catch{}
   }
 
   // Intercept successful linking so the selected asset AND selected Wialon unit are removed

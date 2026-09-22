@@ -42,10 +42,10 @@ async function telemetryForUnit(u,sid){
   if(engineHours===null&&Number.isFinite(Number(u.cneh)))engineHours=Number(u.cneh);
   return {ignition,ignitionLabel:ignition===true?'On':ignition===false?'Off':'Not configured',kilometres:km,engineHours};
 }
-async function units(){
+async function units(includeTelemetry=true){
   const auth=await login();
-  const data=await wialonCall('core/search_items',{spec:{itemsType:'avl_unit',propName:'sys_name',propValueMask:'*',sortType:'sys_name'},force:1,flags:UNIT_FLAGS,count:0,from:0,to:0},auth.eid);
-  return Promise.all((data.items||[]).map(async u=>({id:String(u.id),name:u.nm,position:u.pos?{lat:u.pos.y,lon:u.pos.x,speed:u.pos.s||0,course:u.pos.c||0,time:u.pos.t||0}:null,telemetry:await telemetryForUnit(u,auth.eid)})));
+  const data=await wialonCall('core/search_items',{spec:{itemsType:'avl_unit',propName:'sys_name',propValueMask:'*',sortType:'sys_name'},force:1,flags:includeTelemetry?UNIT_FLAGS:1,count:0,from:0,to:0},auth.eid);
+  return Promise.all((data.items||[]).map(async u=>({id:String(u.id),name:u.nm,position:u.pos?{lat:u.pos.y,lon:u.pos.x,speed:u.pos.s||0,course:u.pos.c||0,time:u.pos.t||0}:null,telemetry:includeTelemetry?await telemetryForUnit(u,auth.eid):null})));
 }
 async function wialonResources(){
   const auth=await login();
@@ -71,7 +71,7 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&l
 
 router.post('/api/gps/wialon/token',async(req,res)=>{try{const token=String(req.body?.token||'').trim();if(!token)return res.status(400).json({error:'Enter a Wialon token'});const old=gpsConfig.token;gpsConfig.token=token;try{const a=await login();gpsConfig.connectedUser=a.user?.nm||'';gpsConfig.lastTest=new Date().toISOString();res.json({ok:true,user:gpsConfig.connectedUser})}catch(e){gpsConfig.token=old;throw e}}catch(e){res.status(400).json({error:e.message})}});
 router.get('/api/gps/wialon/status',(req,res)=>res.json({configured:!!gpsConfig.token,user:gpsConfig.connectedUser,lastTest:gpsConfig.lastTest}));
-router.get('/api/gps/wialon/units',async(req,res)=>{try{res.json(await units())}catch(e){res.status(400).json({error:e.message})}});
+router.get('/api/gps/wialon/units',async(req,res)=>{try{res.json(await units(false))}catch(e){res.status(400).json({error:e.message})}});
 router.get('/api/gps/wialon/resources',async(req,res)=>{try{res.set('Cache-Control','no-store');res.json(await wialonResources())}catch(e){res.status(400).json({error:e.message})}});
 router.get('/api/gps/wialon/geofences',async(req,res)=>{try{res.set('Cache-Control','no-store');res.json(await geofences())}catch(e){res.status(400).json({error:e.message})}});
 router.post('/api/gps/wialon/geofences',async(req,res)=>{try{
@@ -104,8 +104,29 @@ router.get('/live-share/:token',(req,res)=>{
 router.get('/gps-integration',(req,res)=>res.send(page('gps-integration','GPS Integration',`
 <div class="title"><div><h1>GPS Integration</h1><p>Connect Supervisor365 to Wialon and link tracking units to your assets.</p></div><a class="primary" href="/gps">Open Live GPS</a></div>
 <section class="panel" style="padding:22px"><h2 style="margin-top:0">Wialon Connection</h2><p class="sub">Your Wialon token stays on the Supervisor365 server. Live mapping uses OpenStreetMap, Wialon geofences, sensors and counters.</p><div class="field" style="max-width:680px"><label>Wialon API Token</label><input id="token" type="password" autocomplete="off" placeholder="Paste Wialon token"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="primary" id="connect">Save & Test Connection</button><span id="status" class="sub" style="align-self:center"></span></div></section>
+<section class="panel" style="padding:22px"><h2>Wialon Units <span id="unitCount"></span></h2><p class="sub">Units available to your Wialon account appear here. To show a unit on Live GPS, <a href="/assets">add its asset</a>, then save its link below.</p><div id="unitInventory" role="status">Loading Wialon units…</div></section>
 <section class="panel" style="padding:22px"><div class="sectionhead" style="margin:0 0 12px"><h2 style="margin:0">Asset ↔ Wialon Unit Linking</h2><button class="secondary" id="refresh">Refresh Units</button></div><div class="tablewrap"><table><thead><tr><th>Supervisor365 Asset</th><th>Registration</th><th>Wialon Unit</th><th>Action</th></tr></thead><tbody id="links"></tbody></table></div></section>
-<script>(()=>{const assets=${JSON.stringify(assets).replace(/</g,'\\u003c')};let units=[];const $=id=>document.getElementById(id);async function status(){const s=await fetch('/api/gps/wialon/status').then(r=>r.json());$('status').textContent=s.configured?'Connected'+(s.user?' as '+s.user:''):'Not connected'}async function load(){const r=await fetch('/api/gps/wialon/units');const d=await r.json();if(!r.ok){$('links').innerHTML='<tr><td colspan="4"><div class="empty">'+(d.error||'Connect Wialon first')+'</div></td></tr>';return}units=d;render()}function render(){$('links').innerHTML=assets.map(a=>'<tr><td><b>'+a.name+'</b><div class="sub">'+a.type+'</div></td><td>'+a.rego+'</td><td><select id="u_'+a.id+'"><option value="">Not linked</option>'+units.map(u=>'<option value="'+u.id+'" '+(String(a.wialonUnitId||'')===u.id?'selected':'')+'>'+u.name+'</option>').join('')+'</select></td><td><button class="mini" data-save="'+a.id+'">Save Link</button></td></tr>').join('');document.querySelectorAll('[data-save]').forEach(b=>b.onclick=async()=>{const a=assets.find(x=>x.id===b.dataset.save),sel=$('u_'+a.id),u=units.find(x=>x.id===sel.value);const r=await fetch('/api/gps/link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assetId:a.id,wialonUnitId:sel.value,wialonUnitName:u?.name||''})});if(r.ok){a.wialonUnitId=sel.value;b.textContent='Saved ✓';setTimeout(()=>b.textContent='Save Link',1200)}})}$('connect').onclick=async()=>{const token=$('token').value.trim();if(!token)return alert('Paste your Wialon token first.');$('connect').disabled=true;$('connect').textContent='Testing...';const r=await fetch('/api/gps/wialon/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});const d=await r.json();$('connect').disabled=false;$('connect').textContent='Save & Test Connection';if(!r.ok)return alert(d.error||'Connection failed');$('token').value='';await status();await load()};$('refresh').onclick=load;status();load()})();</script>`)));
+<script>(()=>{
+const assets=${JSON.stringify(assets).replace(/</g,'\\u003c')};let units=[];const $=id=>document.getElementById(id);
+const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function json(url,options){const r=await fetch(url,options);const d=await r.json();if(!r.ok)throw new Error(d.error||'Unable to complete request');return d}
+async function status(){const s=await json('/api/gps/wialon/status');$('status').textContent=s.configured?'Connected'+(s.user?' as '+s.user:''):'Not connected'}
+async function load(){
+ $('refresh').disabled=true;$('unitInventory').textContent='Loading Wialon units…';$('unitCount').textContent='';
+ try{units=await json('/api/gps/wialon/units');if(!Array.isArray(units))throw new Error('Unexpected Wialon unit response');
+ $('unitCount').textContent='('+units.length+')';
+ $('unitInventory').innerHTML=units.length?'<div class="tablewrap"><table><thead><tr><th>Wialon unit</th><th>Asset link</th></tr></thead><tbody>'+units.map(u=>{const a=assets.find(a=>String(a.wialonUnitId||'')===u.id);return '<tr><td>'+escapeHtml(u.name)+'</td><td>'+escapeHtml(a?('Linked to '+(a.name||a.rego||a.id)):'Not linked')+'</td></tr>'}).join('')+'</tbody></table></div>':'Connected, but Wialon returned no units for this token. Check that your Wialon user and token have access to the required units.';
+ $('links').dataset.loadState='ready';render();
+ }catch(e){$('unitInventory').textContent='Unable to load units: '+e.message;$('links').dataset.loadState='error';$('links').innerHTML='<tr><td colspan="4">'+escapeHtml(e.message)+'</td></tr>'}
+ finally{$('refresh').disabled=false}
+}
+function render(){
+ $('links').innerHTML=assets.length?assets.map(a=>'<tr><td><b>'+escapeHtml(a.name)+'</b><div class="sub">'+escapeHtml(a.type)+'</div></td><td>'+escapeHtml(a.rego)+'</td><td><select id="u_'+escapeHtml(a.id)+'"><option value="">Not linked</option>'+units.map(u=>'<option value="'+escapeHtml(u.id)+'" '+(String(a.wialonUnitId||'')===u.id?'selected':'')+'>'+escapeHtml(u.name)+'</option>').join('')+'</select></td><td><button class="mini" data-save="'+escapeHtml(a.id)+'">Save Link</button></td></tr>').join(''):'<tr><td colspan="4">No assets have been added to this company yet. <a href="/assets">Add an asset</a>, then return here to link its Wialon unit.</td></tr>';
+ document.querySelectorAll('[data-save]').forEach(b=>b.onclick=async()=>{const a=assets.find(x=>x.id===b.dataset.save),sel=$('u_'+a.id),u=units.find(x=>x.id===sel.value);b.disabled=true;try{await json('/api/gps/link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({assetId:a.id,wialonUnitId:sel.value,wialonUnitName:u?.name||''})});a.wialonUnitId=sel.value;b.textContent='Saved ✓'}catch(e){alert(e.message)}finally{b.disabled=false}})
+}
+$('connect').onclick=async()=>{const token=$('token').value.trim();if(!token)return alert('Paste your Wialon token first.');$('connect').disabled=true;$('connect').textContent='Testing…';try{await json('/api/gps/wialon/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});$('token').value='';await status();await load()}catch(e){$('status').textContent=e.message}finally{$('connect').disabled=false;$('connect').textContent='Save & Test Connection'}};
+$('refresh').onclick=load;status().catch(e=>{$('status').textContent=e.message});load();
+})();</script>`)));
 
 router.get('/gps',(req,res)=>res.send(page('gps','Live GPS',`
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
