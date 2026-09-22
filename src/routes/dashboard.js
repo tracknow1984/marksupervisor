@@ -113,6 +113,8 @@ function overview(){
     prestartsToday:prestarts.filter(p=>String(p.completedAt||'').slice(0,10)===dateKey(new Date())).length
   };
   const attention=[];
+  activeAssets.filter(a=>a.registrationCheck&&a.registrationCheck.state!=='verified').forEach(a=>attention.push({tone:'amber',icon:'expiry',title:`${a.rego||a.id} registration check needs review`,detail:a.registrationCheck.message||'Check could not be verified',href:'/assets'}));
+  activeAssets.filter(a=>a.registrationInspectionWarning).forEach(a=>attention.push({tone:'red',icon:'expiry',title:`${a.rego||a.id} inspection warning`,detail:a.registrationInspectionWarning,href:'/assets'}));
   expiry.filter(x=>x.health.status==='red').forEach(x=>{
     const issue=x.health.red[0];
     attention.push({tone:'red',icon:'expiry',title:`${x.asset.rego||x.asset.id} expiry action`,detail:issue.days===null?`${issue.label}: no date recorded`:`${issue.label}: ${Math.abs(issue.days)} day${Math.abs(issue.days)===1?'':'s'} overdue`,href:'/assets'});

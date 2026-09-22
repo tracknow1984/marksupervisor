@@ -43,6 +43,7 @@ function createPool(){
   return{get,release(entry){entry.active=Math.max(0,entry.active-1);entry.used=Date.now()},async close(){await Promise.all([...workers.values()].map(stop))},workers};
 }
 function createGateway(){
+  let regoBusyUntil=0;
   const app=express(),pool=createPool();app.disable('x-powered-by');app.set('trust proxy',1);
   app.use((req,res,next)=>{res.set('Cache-Control','private, no-store');res.set('Vary','Cookie');res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','same-origin');res.set('X-Frame-Options','SAMEORIGIN');next()});
   app.get('/healthz',(req,res)=>res.json({ok:true,companyIsolation:true}));
@@ -70,6 +71,12 @@ function createGateway(){
     if(ctx.user.mustChangePassword)return req.path.startsWith('/api/')?res.status(403).json({error:'Change your temporary password first',code:'PASSWORD_CHANGE_REQUIRED'}):res.redirect('/onboarding?changePassword=1');
     // Company identity comes exclusively from the authenticated session, never a URL/body/header.
     if(req.method!=='GET'&&req.method!=='HEAD'&&(/^\/api\/modules(?:\/|$)/.test(req.path)||req.path==='/api/gps/wialon/token')&&!['Owner','Company Admin'].includes(ctx.user.role))return res.status(403).json({error:'Company administrator access required'});
+    if(req.method==='POST'&&/^\/api\/assets\/[^/]+\/check-registration$/.test(req.path)){
+      if(!['Owner','Company Admin'].includes(ctx.user.role))return res.status(403).json({error:'Company administrator access required'});
+      if(Date.now()<regoBusyUntil)return res.status(429).json({error:'Another registration check is running or has just finished. Please try again shortly.'});
+      regoBusyUntil=Date.now()+90000;
+      res.once('finish',()=>{regoBusyUntil=Date.now()+10000});
+    }
     let entry;
     try{
       entry=await pool.get(ctx.company.id);if(res.destroyed){pool.release(entry);return}let released=false;const release=()=>{if(!released){released=true;pool.release(entry)}};
