@@ -83,7 +83,9 @@ async function lookup(rego,onProgress=()=>{}) {
     progress('search');
     await page.getByRole('main').getByRole('button',{name:'Search',exact:true}).click();
     progress('result');
-    await page.getByText(/^(Registration status|Status):?$/i).first().waitFor({state:'visible',timeout:15000});
+    // TMR's Status term contains trailing newlines/tabs: an anchored text regex never matches it.
+    // Wait for the accessible result heading, then parse the rendered labelled values.
+    await page.getByRole('main').getByRole('heading',{name:'Registration details',exact:true}).waitFor({state:'visible',timeout:20000});
     const text = await page.getByRole('main').innerText();
     guardText(text);
     return parseResult(text);

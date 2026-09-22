@@ -11,3 +11,28 @@ test('saves verified fields atomically to company storage and keeps operating st
 test('mismatch and provider failures retain prior details',async()=>{for(const provider of [async()=>({...result,chassis:'BAD'}),async()=>{throw Error('internal secret')}]){const assets=[asset()];const response=await createChecker(assets,provider)('one','Admin');assert.equal(response.ok,false);assert.equal(assets[0].registrationExpiry,'2025-07-03');assert.equal(assets[0].registrationStatus,undefined);assert.doesNotMatch(response.check.message,/internal secret/);assert.equal(assets[0].registrationCheckHistory.length,1)}});
 test('concurrent edits are not overwritten and duplicate checks are rejected',async()=>{let release;const pending=new Promise(r=>release=r);const assets=[asset()];const check=createChecker(assets,()=>pending);const a=check('one','Admin');await assert.rejects(()=>check('one','Admin'),/already running/);assets[0].rego='CHANGED';release(result);assert.equal((await a).ok,false);assert.equal(assets[0].rego,'CHANGED');assert.equal(assets[0].registrationExpiry,'2025-07-03')});
 test('rejects interstate and missing assets before calling provider',async()=>{let called=false;const check=createChecker([{...asset(),registrationState:'NSW'}],async()=>{called=true;return result});await assert.rejects(()=>check('one','Admin'),/outside Queensland/);await assert.rejects(()=>check('other-company-id','Admin'),/not found/);assert.equal(called,false)});
+
+test('parses the observed TMR result with whitespace in definition terms',()=>{const actual=`Check registration status
+View results
+Current Inspection not recorded
+Please note
+Driving with an expired certificate of inspection (COI) is an offence
+Registration details
+Registration number
+\t\t\tXB06XI
+Chassis
+\t\tJ04940
+Description
+1980 INTERNATIONAL T2670 TRUCK
+Gross Vehicle Mass (GVM)
+20800 kgs
+Purpose of use
+COMMERCIAL
+Status
+\t\t\t
+EXPIRED
+Expiry
+03/07/2026
+Renew Now
+Search Again
+Exit`;const parsed=parseResult(actual);assert.equal(parsed.rego,'XB06XI');assert.equal(parsed.chassis,'J04940');assert.equal(parsed.status,'EXPIRED');assert.equal(parsed.expiry,'2026-07-03');assert.equal(matchVehicle(asset(),parsed),'Chassis / serial')});
