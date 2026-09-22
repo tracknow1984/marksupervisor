@@ -13,7 +13,7 @@ function dateISO(value) {
   if (!Number.isFinite(d.getTime()) || d.toISOString().slice(0,10) !== iso) throw new CheckError('review','TMR returned an invalid expiry date.');
   return iso;
 }
-// Read labelled, rendered result text only. Never use a date or VIN from elsewhere on the page.
+// Read only the labelled registration result from the rendered page.
 function parseResult(text) {
   const lines = String(text).split(/[\n\t]+/).map(x => x.trim()).filter(Boolean);
   function field(labels) {
@@ -25,33 +25,22 @@ function parseResult(text) {
     return '';
   }
   const rego = field(['Registration number','Registration']);
-  const vin = field(['VIN','Vehicle identification number']);
-  const chassis = field(['Chassis number','Chassis']);
   const status = field(['Registration status','Status']).toUpperCase();
   const expiry = field(['Registration expiry date','Registration expiry','Expiry date','Expiry']);
   if (!rego || !['REGISTERED','CURRENT','EXPIRED','UNREGISTERED','SUSPENDED','CANCELLED'].includes(status) || !expiry) {
     throw new CheckError('review','No complete registration result was returned. Check the official website; existing details were kept.');
   }
-  return {rego:normal(rego),vin:normal(vin),chassis:normal(chassis),status,expiry:dateISO(expiry),
-    description:field(['Vehicle description','Description']).slice(0,300),
-    inspectionWarning:/current inspection not recorded/i.test(text)?'Current Inspection not recorded':''};
+  return {rego:normal(rego),status,expiry:dateISO(expiry)};
 }
 function assetIdentity(asset) {
-  const vin = normal(asset.vin);
-  const serial = String(asset.serialNumber ?? asset.importSource?.serial ?? '').trim();
-  const labelled = serial.match(/^(?:VIN|CHASSIS(?: NUMBER)?|SERIAL(?: NUMBER)?)\s*:\s*([A-Z0-9-]+)$/i);
-  const chassis = normal(labelled ? labelled[1] : /^[A-Z0-9-]{4,25}$/i.test(serial) ? serial : '');
-  return {rego:normal(asset.rego),state:String(asset.registrationState||'').toUpperCase(),vin,chassis};
+  return {rego:normal(asset.rego),state:String(asset.registrationState||'').trim().toUpperCase()};
 }
-function matchVehicle(asset, result) {
+function matchRegistration(asset, result) {
   const id = assetIdentity(asset);
-  if (id.rego !== result.rego) throw new CheckError('review','Returned registration does not match this asset. Existing details were kept.');
-  if (id.vin && result.vin && id.vin !== result.vin) throw new CheckError('review','Returned VIN does not match this asset. Existing details were kept.');
-  if (id.vin && (id.vin === result.vin || id.vin === result.chassis)) return 'VIN';
-  if (id.vin) throw new CheckError('review','Returned vehicle identity does not match the recorded VIN. Existing details were kept.');
-  if (id.chassis && (id.chassis === result.chassis || id.chassis === result.vin)) return 'Chassis / serial';
-  throw new CheckError('review','VIN/chassis could not be matched. Confirm the vehicle identity in Asset Details and check again. Existing details were kept.');
+  if (id.rego !== normal(result.rego)) throw new CheckError('review','Returned registration does not match this asset. Existing details were kept.');
+  return 'Queensland registration number';
 }
+
 function guardText(text) {
   if (/verify (?:that )?you are human|checking your browser|unusual traffic|automated queries|access denied|request blocked/i.test(text))
     throw new CheckError('blocked','TMR requires a manual check or has blocked this request. Open the official checker. Existing details were kept.');
@@ -116,15 +105,16 @@ function createChecker(assets, provider=lookup) {
     try {
       const report=message=>{const i=assets.findIndex(a=>a.id===id);if(i>=0)assets[i]={...assets[i],registrationCheck:{...attempt,state:'running',message}}};
       report('Starting registration check');
-      const result=await provider(identity.rego,report);
+      const returned=await provider(identity.rego,report);
+      const result={rego:normal(returned.rego),status:returned.status,expiry:returned.expiry};
       const currentIndex=assets.findIndex(a=>a.id===id);
       if(currentIndex<0)throw new CheckError('missing','Asset no longer exists');
       const current=assets[currentIndex];
       if(snapshot!==JSON.stringify([assetIdentity(current),current.registrationExpiry,current.registrationStatus]))throw new CheckError('review','Asset details changed during this check. Existing details were kept; check again.');
-      const matchedBy=matchVehicle(current,result), checkedAt=new Date().toISOString();
-      const record={...attempt,state:'verified',checkedAt,matchedBy,result,previous:{registrationState:current.registrationState||'',registrationExpiry:current.registrationExpiry||'',registrationStatus:current.registrationStatus||'',registrationInspectionWarning:current.registrationInspectionWarning||''}};
+      const matchedBy=matchRegistration(current,result), checkedAt=new Date().toISOString();
+      const record={...attempt,state:'verified',checkedAt,matchedBy,result,previous:{registrationExpiry:current.registrationExpiry||'',registrationStatus:current.registrationStatus||'',registrationCheckedAt:current.registrationCheckedAt||''}};
       // Replace the collection item once: the tenant collection saves this atomically.
-      assets[currentIndex]={...current,registrationState:'QLD',registrationExpiry:result.expiry,registrationStatus:result.status,registrationInspectionWarning:result.inspectionWarning,registrationCheckedAt:checkedAt,registrationCheck:record,registrationCheckHistory:[...(current.registrationCheckHistory||[]),record].slice(-20)};
+      assets[currentIndex]={...current,registrationExpiry:result.expiry,registrationStatus:result.status,registrationCheckedAt:checkedAt,registrationCheck:record,registrationCheckHistory:[...(current.registrationCheckHistory||[]),record].slice(-20)};
       return {ok:true,check:record,asset:assets[currentIndex]};
     } catch(e) {
       const currentIndex=assets.findIndex(a=>a.id===id);
@@ -134,4 +124,4 @@ function createChecker(assets, provider=lookup) {
     } finally { busy=false; }
   };
 }
-module.exports={SOURCE,TERMS,CheckError,dateISO,parseResult,assetIdentity,matchVehicle,guardText,lookup,createChecker};
+module.exports={SOURCE,TERMS,CheckError,dateISO,parseResult,assetIdentity,matchRegistration,guardText,lookup,createChecker};
