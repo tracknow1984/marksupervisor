@@ -6,7 +6,11 @@ const {assets}=require('../store');
 const shareStore=require('../gps-share-store');
 
 const WIALON_HOST='https://hst-api.wialon.com';
-let gpsConfig={token:'',connectedUser:'',lastTest:null};
+const fs=require('fs'),path=require('path');
+const configFile=path.join(process.env.SV365_DATA_DIR,'wialon-prestart.json');
+const savedGps=fs.existsSync(configFile)?JSON.parse(fs.readFileSync(configFile,'utf8')):{};
+let gpsConfig={token:savedGps.token||'',connectedUser:savedGps.user||'',lastTest:null};
+global.__SV365_WIALON_TOKEN=gpsConfig.token;
 const addressCache=new Map();
 const UNIT_FLAGS=1+1024+4096+8192;
 const NA_SENSOR=-348201.3876;

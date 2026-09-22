@@ -81,4 +81,9 @@ app.get('/defects',(req,res)=>res.redirect('/vehicle-defects'));
 app.get('/vehicleDefects',(req,res)=>res.redirect('/vehicle-defects'));
 app.get('/',(req,res)=>res.redirect('/assets'));
 app.use((req,res)=>res.status(404).send('Supervisor365 page not found'));
-app.listen(PORT,'0.0.0.0',()=>console.log('Supervisor365 modular master running on '+PORT));
+const server=app.listen(PORT,'127.0.0.1',()=>{
+  process.env.PORT=String(server.address().port);
+  if(process.send)process.send({type:'ready',port:server.address().port});
+});
+process.on('SIGTERM',()=>server.close(()=>process.exit(0)));
+process.on('disconnect',()=>server.close(()=>process.exit(0)));

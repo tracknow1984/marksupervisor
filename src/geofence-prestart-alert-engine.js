@@ -2,7 +2,7 @@ const {assets}=require('./store');
 const operationsDb=require('./persistent-store');
 const store=require('./geofence-prestart-alert-store');
 
-const PORT=process.env.PORT||3000;
+
 let running=false,lastRun=null,lastError='',zoneCache={at:0,rows:[]};
 
 const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -10,7 +10,7 @@ function stateKey(rule){return[String(rule.assetId),String(rule.resourceId||''),
 function haversineM(a,b){const R=6371000,toRad=d=>d*Math.PI/180,dLat=toRad(b.lat-a.lat),dLon=toRad(b.lon-a.lon),la1=toRad(a.lat),la2=toRad(b.lat);const x=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
 function pointInPolygon(point,points){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const xi=points[i].lon,yi=points[i].lat,xj=points[j].lon,yj=points[j].lat;const hit=((yi>point.lat)!==(yj>point.lat))&&(point.lon<(xj-xi)*(point.lat-yi)/((yj-yi)||1e-12)+xi);if(hit)inside=!inside}return inside}
 function isInside(point,zone){const pts=Array.isArray(zone?.points)?zone.points.filter(p=>num(p.lat)!==null&&num(p.lon)!==null):[];if(!pts.length)return false;const isCircle=Number(zone.type)===3||pts.length===1;if(isCircle){const radius=Math.max(5,num(pts[0].radius)||0,num(zone.width)||0);return haversineM(point,{lat:Number(pts[0].lat),lon:Number(pts[0].lon)})<=radius+12}return pts.length>=3?pointInPolygon(point,pts):false}
-async function selfJson(path){const r=await fetch(`http://127.0.0.1:${PORT}${path}`,{headers:{'X-SV365-Internal':'geofence-engine'}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Internal GPS request failed (${r.status})`);return d}
+async function selfJson(path){const r=await fetch(`http://127.0.0.1:${process.env.PORT}${path}`,{headers:{'X-SV365-Internal':'geofence-engine'}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Internal GPS request failed (${r.status})`);return d}
 async function zones(force=false){if(!force&&Date.now()-zoneCache.at<300000&&zoneCache.rows.length)return zoneCache.rows;const rows=await selfJson('/api/gps/wialon/geofences');zoneCache={at:Date.now(),rows:Array.isArray(rows)?rows:[]};return zoneCache.rows}
 function latestPrestart(assetId,at){const t=new Date(at).getTime();return operationsDb.listPrestarts().filter(p=>String(p.assetId)===String(assetId)&&p.isPrimary!==false&&new Date(p.completedAt||0).getTime()<=t).sort((a,b)=>new Date(b.completedAt||0)-new Date(a.completedAt||0))[0]||null}
 function prestartPass(assetId,at,hours){const latest=latestPrestart(assetId,at);if(!latest)return{ok:false,reason:'No primary pre-start found',latest:null};const ageMs=new Date(at).getTime()-new Date(latest.completedAt||0).getTime();if(String(latest.status)!=='Passed')return{ok:false,reason:`Latest pre-start is ${latest.status||'not passed'}`,latest};if(ageMs<0||ageMs>Math.max(1,Number(hours)||24)*3600000)return{ok:false,reason:`Passed pre-start is older than ${Math.max(1,Number(hours)||24)} hours`,latest};return{ok:true,reason:'Passed pre-start found',latest}}

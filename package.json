@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "test:prestart": "node scripts/prestart-source-check.js",
-    "data:flush": "node scripts/flush-build-data.js"
+    "data:flush": "node scripts/flush-build-data.js",
+    "test:tenants": "node scripts/tenant-isolation-check.js"
   },
   "dependencies": {
     "express": "^5.1.0",
