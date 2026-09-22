@@ -46,6 +46,11 @@ function createGateway(){
   const app=express(),pool=createPool();app.disable('x-powered-by');app.set('trust proxy',1);
   app.use((req,res,next)=>{res.set('Cache-Control','private, no-store');res.set('Vary','Cookie');res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','same-origin');res.set('X-Frame-Options','SAMEORIGIN');next()});
   app.get('/healthz',(req,res)=>res.json({ok:true,companyIsolation:true}));
+  // Keep the migration preview read-only until durable storage is attached.
+  app.use((req,res,next)=>{
+    if(process.env.SV365_MIGRATION_PREVIEW==='1'&&!['GET','HEAD','OPTIONS'].includes(req.method))return res.status(503).json({error:'This workspace is being prepared. Account creation and changes will open after permanent storage is connected.',code:'MIGRATION_PREVIEW'});
+    next();
+  });
   app.use((req,res,next)=>{
     if(['POST','PUT','PATCH','DELETE'].includes(req.method)){
       if(req.get('Sec-Fetch-Site')==='cross-site')return res.status(403).json({error:'Cross-site requests are not allowed'});
