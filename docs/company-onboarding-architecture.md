@@ -117,3 +117,14 @@ Before public signup goes live, migrate company/auth/session/tenant records to P
 8. Platform administration for Supervisor365 staff to suspend, support and audit customer companies.
 9. Billing/subscription provisioning if required.
 10. Security testing before exposing operational data to external companies.
+
+
+## Client entry page update — 22 September 2026
+
+- `/signup` now provides a responsive, accessible three-step company registration form (company, contacts, administrator login).
+- `/login` supports username/email and password, TOTP challenges, request errors and duplicate-submit prevention.
+- Registration validates ABN, email, username and input lengths server-side; passwords are confirmed in the UI.
+- Registration completes with a login link. Sign-in continues to `/onboarding`, not the legacy operations dashboard.
+- Onboarding HTML redirects anonymous users to login. Authenticated API responses are not cacheable. Cross-origin browser mutations are rejected and credential endpoints have a basic process-local throttle.
+- This is the client account setup flow, not approval for public multi-company operations. The tenant-isolation and production-persistence migration requirements above still apply. Throttling must become shared and use verified proxy configuration before production scaling.
+- Email verification, password recovery and isolated operations access remain outstanding.
