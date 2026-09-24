@@ -2,13 +2,9 @@ const express=require('express');
 const router=express.Router();
 const {page}=require('../layout');
 const modules=require('../module-store');
-const accounts=require('../company-account-store');
-
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function cookie(req,name){const raw=String(req.headers?.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='));return raw?decodeURIComponent(raw.slice(name.length+1)):''}
-function context(req){return accounts.getSession(cookie(req,'sv365_session'))}
-function companyKey(req){return context(req)?.company?.id||'default'}
-function canManage(req){const ctx=context(req);return !ctx||['Company Admin','Owner'].includes(ctx.user?.role)}
+function companyKey(){return process.env.SV365_TENANT_ID}
+function canManage(req){return ['Company Admin','Owner'].includes(req.get('x-sv365-user-role'))}
 function icon(id){
   const paths={
     assets:'<path d="M4 16V9a2 2 0 0 1 2-2h10l4 4v5M3 16h18v3H3z"/><circle cx="7" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',

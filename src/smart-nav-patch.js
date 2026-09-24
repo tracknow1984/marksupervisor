@@ -76,7 +76,8 @@ if(!express.response.__sv365SmartNavPatched){
     {id:'people',label:'People',icon:icons.people,items:[
       {label:'Employees',href:'/employees',desc:'Staff profiles and health checks',badge:'people'}
     ]},
-    {id:'admin',label:'Administration',icon:icons.admin,items:[
+    {id:'admin',label:'System Admin',icon:icons.admin,items:[
+      {label:'Client Logo',href:'/client-logo',desc:'Upload and manage your company logo'},
       {label:'Pre-Start Configuration',href:'/prestart-config',desc:'Checklist configuration'},
       {label:'GPS Integration',href:'/gps-integration',desc:'Wialon connection and linking'}
     ]}
@@ -120,6 +121,7 @@ if(!express.response.__sv365SmartNavPatched){
     {label:'Share Live Location',href:'/gps?quick=shareLocation',desc:'Create a temporary external tracking link',icon:'↗'}
   ];
   const destinations=[
+    {label:'Client Logo',href:'/client-logo',desc:'System Admin: upload or replace your company logo'},
     {label:'Assets',href:'/assets',desc:'Fleet asset register'},
     {label:'Employees',href:'/employees',desc:'People and staff health checks'},
     {label:'Pre-Starts',href:'/prestarts',desc:'Daily inspections'},

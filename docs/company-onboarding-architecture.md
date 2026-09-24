@@ -70,31 +70,17 @@ Runtime variables:
 
 If SMTP is unavailable when a company administrator creates an employee, the one-time temporary password is returned only to the authenticated administrator so it can be delivered securely by another channel.
 
-## Tenant isolation — mandatory migration before public launch
+## Tenant isolation — company workspaces implemented
 
-The new account layer is company-aware, but the original Supervisor365 operational stores were built as single-company/global stores. Before multiple customers are allowed into the production operations application, all operational records and queries must be tenant-scoped.
+The authenticated gateway now routes every operational request into an isolated company worker and storage directory. Clients cannot select another company using a URL, header or form field. Data and integration caches are separated across all operational modules. See [company-data-isolation.md](company-data-isolation.md) for the boundary, tests, capacity limits and required legacy-data migration/deployment steps.
 
-Records requiring `companyId` and server-side filtering include at minimum:
-- Employees
-- Assets
-- GPS links and Wialon configuration
-- Pre-starts
-- EWD sessions and EWD security records
-- Vehicle defects
-- Service schedules/history
-- Incidents
-- Compliance distributions
-- Documents and attachments
-- Reports
-- Dashboard queries
-
-No client-supplied `companyId` should be trusted for access control. The tenant must be derived from the authenticated server session.
+Unassigned legacy records remain outside client workspaces until their owner confirms the destination account. The full deployment is pending verification of the live storage mount and backup.
 
 ## Production persistence
 
 The current onboarding store uses the same file-backed development pattern as the existing Supervisor365 prototype. This is not the final production datastore.
 
-Before public signup goes live, migrate company/auth/session/tenant records to PostgreSQL (or equivalent managed relational storage) with:
+Before production scaling, migrate company/auth/session/tenant records to PostgreSQL (or equivalent managed relational storage). The single-instance file-backed deployment still requires a persistent disk and backups. Database work should include:
 - Australian hosting where required by product/compliance policy
 - migrations and backups
 - unique constraints on ABN, username and email as appropriate
@@ -108,7 +94,7 @@ Before public signup goes live, migrate company/auth/session/tenant records to P
 ## Recommended next sequence
 
 1. PostgreSQL schema and migration layer.
-2. Tenant middleware and `companyId` migration across every operational module.
+2. Complete the documented legacy-data assignment and verify the deployed company boundary.
 3. Company administration page: company profile, users, roles, subscription/status.
 4. Email verification and password reset.
 5. Microsoft Entra ID and Google OIDC.
@@ -128,3 +114,5 @@ Before public signup goes live, migrate company/auth/session/tenant records to P
 - Onboarding HTML redirects anonymous users to login. Authenticated API responses are not cacheable. Cross-origin browser mutations are rejected and credential endpoints have a basic process-local throttle.
 - This is the client account setup flow, not approval for public multi-company operations. The tenant-isolation and production-persistence migration requirements above still apply. Throttling must become shared and use verified proxy configuration before production scaling.
 - Email verification, password recovery and isolated operations access remain outstanding.
+
+The September 22 isolation update sends successful sign-in to `/dashboard`. Temporary-password users still go to `/onboarding?changePassword=1`.

@@ -48,21 +48,21 @@ if(!express.response.__sv365GpsLinkAvailabilityUiPatched){
   const originalSend=express.response.send;
   const injection=String.raw`
 <style id="svGpsLinkAvailabilityStyle">
-.gpsLinkedPanel{margin-top:14px}.gpsLinkedGrid{display:grid;gap:8px}.gpsLinkedRow{display:grid;grid-template-columns:1.25fr .8fr 1.2fr auto;gap:10px;align-items:center;padding:11px 12px;border:1px solid #e3e9f0;border-radius:10px;background:#fbfcfd}.gpsLinkedRow b{font-size:12px}.gpsLinkedRow .sub{font-size:10px}.gpsLinkedBadge{display:inline-flex;padding:4px 7px;border-radius:999px;background:#e8f7ef;color:#187c49;font-size:9px;font-weight:900}.gpsAvailableEmpty{padding:24px;text-align:center;color:#7c8998}.gpsLinkCount{font-size:10px;color:#7d8998;margin-left:7px}@media(max-width:760px){.gpsLinkedRow{grid-template-columns:1fr}.gpsLinkedRow button{justify-self:start}}
+.gpsLinkedPanel{margin-top:14px}.gpsLinkedGrid{display:grid;gap:8px}.gpsLinkedRow{display:grid;grid-template-columns:1.25fr .8fr .8fr 1.2fr auto;gap:10px;align-items:center;padding:11px 12px;border:1px solid #e3e9f0;border-radius:10px;background:#fbfcfd}.gpsLinkedRow b{font-size:12px}.gpsLinkedRow .sub{font-size:10px}.gpsLinkedBadge{display:inline-flex;padding:4px 7px;border-radius:999px;background:#e8f7ef;color:#187c49;font-size:9px;font-weight:900}.gpsAvailableEmpty{padding:24px;text-align:center;color:#7c8998}.gpsLinkCount{font-size:10px;color:#7d8998;margin-left:7px}@media(max-width:760px){.gpsLinkedRow{grid-template-columns:1fr}.gpsLinkedRow button{justify-self:start}}
 </style>
 <script id="svGpsLinkAvailabilityV2">
 (()=>{
   if(location.pathname!=='/gps-integration')return;
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  let assetRows=[],filtering=false,observer=null;
+  let assetRows=[],assetsLoaded=false,filtering=false,observer=null;
 
   function linkedAssets(){return assetRows.filter(a=>String(a.wialonUnitId||'').trim())}
   function availableAssets(){return assetRows.filter(a=>!String(a.wialonUnitId||'').trim())}
   function usedUnitIds(){return new Set(linkedAssets().map(a=>String(a.wialonUnitId||'').trim()).filter(Boolean))}
 
   function filterAvailableTable(){
-    if(filtering)return;
-    const body=document.getElementById('links');if(!body)return;
+    if(filtering||!assetsLoaded)return;
+    const body=document.getElementById('links');if(!body||body.dataset.loadState!=='ready')return;
     filtering=true;
     try{
       const availableIds=new Set(availableAssets().map(a=>String(a.id)));
@@ -76,7 +76,7 @@ if(!express.response.__sv365GpsLinkAvailabilityUiPatched){
         }
       });
       const remaining=body.querySelectorAll('tr [data-save]').length;
-      if(!remaining)body.innerHTML='<tr><td colspan="4"><div class="gpsAvailableEmpty">All eligible assets are already linked to GPS units.</div></td></tr>';
+      if(!remaining&&assetRows.length&&!body.querySelector('.gpsAvailableEmpty'))body.innerHTML='<tr><td colspan="5"><div class="gpsAvailableEmpty">All eligible assets are already linked to GPS units.</div></td></tr>';
     }finally{filtering=false}
   }
 
@@ -104,7 +104,7 @@ if(!express.response.__sv365GpsLinkAvailabilityUiPatched){
   function renderLinked(){
     ensureLinkedPanel();const box=document.getElementById('gpsLinkedRows'),rows=linkedAssets();if(!box)return;
     document.getElementById('gpsLinkedCount').textContent=rows.length?'('+rows.length+')':'';
-    box.innerHTML=rows.length?rows.map(a=>'<div class="gpsLinkedRow"><div><b>'+esc(a.name||a.id)+'</b><div class="sub">'+esc(a.type||'Asset')+'</div></div><div><b>'+esc(a.rego||'—')+'</b><div class="sub">Registration</div></div><div><span class="gpsLinkedBadge">LINKED</span><div class="sub" style="margin-top:4px">'+esc(a.wialonUnitName||a.wialonUnitId||'Wialon unit')+'</div></div><button class="secondary" type="button" data-gps-unlink="'+esc(a.id)+'">Unlink</button></div>').join(''):'<div class="gpsAvailableEmpty">No assets are currently linked.</div>';
+    box.innerHTML=rows.length?rows.map(a=>'<div class="gpsLinkedRow"><div><b>'+esc(a.name||a.id)+'</b><div class="sub">'+esc(a.type||'Asset')+'</div></div><div><b>'+esc(a.rego||'—')+'</b><div class="sub">Registration</div></div><div><b>'+esc(a.plantId||'—')+'</b><div class="sub">Plant ID</div></div><div><span class="gpsLinkedBadge">LINKED</span><div class="sub" style="margin-top:4px">'+esc(a.wialonUnitName||a.wialonUnitId||'Wialon unit')+'</div></div><button class="secondary" type="button" data-gps-unlink="'+esc(a.id)+'">Unlink</button></div>').join(''):'<div class="gpsAvailableEmpty">No assets are currently linked.</div>';
     box.querySelectorAll('[data-gps-unlink]').forEach(btn=>btn.onclick=async()=>{
       const a=assetRows.find(x=>String(x.id)===String(btn.dataset.gpsUnlink));if(!a)return;
       if(!confirm('Unlink '+(a.rego||a.name||'this asset')+' from its Wialon GPS unit?'))return;
@@ -114,7 +114,7 @@ if(!express.response.__sv365GpsLinkAvailabilityUiPatched){
   }
 
   async function loadAssets(){
-    try{const r=await nativeFetch('/api/assets',{cache:'no-store'}),d=await r.json();if(!r.ok||!Array.isArray(d))return;assetRows=d;watchAvailability();filterAvailableTable();renderLinked()}catch{}
+    try{const r=await nativeFetch('/api/assets',{cache:'no-store'}),d=await r.json();if(!r.ok||!Array.isArray(d))return;assetRows=d;assetsLoaded=true;watchAvailability();filterAvailableTable();renderLinked()}catch{}
   }
 
   // Intercept successful linking so the selected asset AND selected Wialon unit are removed
