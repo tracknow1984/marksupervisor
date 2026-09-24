@@ -19,7 +19,7 @@ const tokenHash=v=>crypto.createHash('sha256').update(String(v||'')).digest('hex
 
 function hashPassword(password){const value=String(password||'');if(value.length<10)throw new Error('Password must be at least 10 characters');const salt=crypto.randomBytes(16).toString('hex');const hash=crypto.scryptSync(value,salt,32).toString('hex');return{salt,hash,algorithm:'scrypt',updatedAt:new Date().toISOString()}}
 function verifyPassword(password,record){if(!record?.salt||!record?.hash)return false;try{const a=Buffer.from(record.hash,'hex');const b=crypto.scryptSync(String(password||''),record.salt,a.length);return a.length===b.length&&crypto.timingSafeEqual(a,b)}catch{return false}}
-function publicCompany(c){if(!c)return null;return{id:c.id,name:c.name,abn:c.abn,abnStatus:c.abnStatus||'',businessType:c.businessType,status:c.status,contactName:c.contactName,contactEmail:c.contactEmail,accountsContact:c.accountsContact,accountsEmail:c.accountsEmail||'',accountsPhone:c.accountsPhone,createdAt:c.createdAt,activatedAt:c.activatedAt,sso:c.sso||{}}}
+function publicCompany(c){if(!c)return null;return{id:c.id,name:c.name,logo:c.logo||'',abn:c.abn,abnStatus:c.abnStatus||'',businessType:c.businessType,status:c.status,contactName:c.contactName,contactEmail:c.contactEmail,accountsContact:c.accountsContact,accountsEmail:c.accountsEmail||'',accountsPhone:c.accountsPhone,createdAt:c.createdAt,activatedAt:c.activatedAt,sso:c.sso||{}}}
 function publicUser(u){if(!u)return null;return{id:u.id,companyId:u.companyId,username:u.username,email:u.email,firstName:u.firstName,lastName:u.lastName,phone:u.phone||'',role:u.role,status:u.status,mustChangePassword:!!u.mustChangePassword,mfa:{enabled:!!u.mfa?.enabled,method:u.mfa?.enabled?'totp':''},identityProviders:Array.isArray(u.identityProviders)?u.identityProviders:[],createdAt:u.createdAt,lastLoginAt:u.lastLoginAt||null}}
 function listCompanies(){return read().companies.map(publicCompany)}
 function getCompany(companyId){return publicCompany(read().companies.find(x=>String(x.id)===String(companyId)))}
@@ -65,4 +65,16 @@ function getMfaSecret(userId){const u=getRawUser(userId);return u?.mfa?.enabled?
 function createChallenge(userId){const d=read(),u=d.users.find(x=>String(x.id)===String(userId));if(!u)throw new Error('User not found');const raw=token(),now=Date.now();d.challenges=d.challenges.filter(c=>new Date(c.expiresAt).getTime()>now);d.challenges.push({tokenHash:tokenHash(raw),userId:u.id,companyId:u.companyId,createdAt:new Date(now).toISOString(),expiresAt:new Date(now+CHALLENGE_MS).toISOString()});write(d);return raw}
 function consumeChallenge(raw){const d=read(),hash=tokenHash(raw),now=Date.now(),i=d.challenges.findIndex(c=>c.tokenHash===hash&&new Date(c.expiresAt).getTime()>now);if(i<0)return null;const c=d.challenges[i];d.challenges.splice(i,1);write(d);return c}
 
-module.exports={FILE,createCompanySignup,listCompanies,getCompany,getUser,getRawUser,listCompanyUsers,findUserForLogin,verifyUserPassword,createSession,getSession,revokeSession,changePassword,createEmployeeUser,updateUserProfile,setPendingMfa,getPendingMfaSecret,enableMfa,getMfaSecret,createChallenge,consumeChallenge,publicUser,publicCompany};
+function updateCompanyLogo(companyId,logo){
+  if(typeof logo!=='string'||logo.length>110000)throw new Error('Logo must be smaller than 80 KB after resizing');
+  if(logo){
+    const match=/^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(logo);
+    if(!match)throw new Error('Choose a valid PNG or JPEG image');
+    const bytes=Buffer.from(match[1],'base64');
+    if(bytes.length>81920||bytes.length<24||bytes.subarray(0,8).toString('hex')!=='89504e470d0a1a0a'||bytes.toString('ascii',12,16)!=='IHDR'||bytes.readUInt32BE(16)>600||bytes.readUInt32BE(20)>240||!bytes.readUInt32BE(16)||!bytes.readUInt32BE(20))throw new Error('Logo dimensions or image format are invalid');
+  }
+  const d=read(),c=d.companies.find(x=>String(x.id)===String(companyId));
+  if(!c)throw new Error('Company not found');
+  c.logo=logo;c.updatedAt=new Date().toISOString();write(d);return publicCompany(c);
+}
+module.exports={updateCompanyLogo,FILE,createCompanySignup,listCompanies,getCompany,getUser,getRawUser,listCompanyUsers,findUserForLogin,verifyUserPassword,createSession,getSession,revokeSession,changePassword,createEmployeeUser,updateUserProfile,setPendingMfa,getPendingMfaSecret,enableMfa,getMfaSecret,createChallenge,consumeChallenge,publicUser,publicCompany};
