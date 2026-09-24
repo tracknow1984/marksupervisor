@@ -61,7 +61,7 @@ function createGateway(){
   });
   const authParser=express.json({limit:'128kb'});
   app.use((req,res,next)=>{
-    const accountRoute=['/signup','/login','/onboarding','/api/profile','/api/public/abn-lookup','/api/public/company-signup'].includes(req.path)||/^\/api\/(auth|company)(\/|$)/i.test(req.path);
+    const accountRoute=['/signup','/login','/onboarding','/client-logo','/api/profile','/api/public/abn-lookup','/api/public/company-signup'].includes(req.path)||/^\/api\/(auth|company)(\/|$)/i.test(req.path);
     if(!accountRoute)return next();
     authParser(req,res,err=>err?next(err):companyRouter(req,res,()=>res.status(404).json({error:'Account endpoint not found'})));
   });
