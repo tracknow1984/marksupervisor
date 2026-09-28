@@ -7,7 +7,7 @@ const activeAssets=()=>assets.filter(a=>!['Retired','Decommissioned','Sold'].inc
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 router.get('/prestarts',(req,res)=>{
-  const available=activeAssets();
+  const available=activeAssets().map(({id,rego,plantId,name,type,reading,status,registrationExpiry})=>({id,rego,plantId,name,type,reading,status,registrationExpiry}));
   const seed=JSON.stringify(available).replace(/</g,'\\u003c');
   const preselect=JSON.stringify(String(req.query.asset||'')).replace(/</g,'\\u003c');
   const primaryOptions=available.map(a=>`<option value="${esc(a.id)}">${esc(a.rego||a.id)} · ${esc(a.name)} · ${esc(a.type)}</option>`).join('');
