@@ -39,6 +39,7 @@ if(!express.response.__sv365AssetExpiryPatched){
   document.getElementById('expiryClose').onclick=()=>modal.classList.remove('open');modal.onclick=e=>{if(e.target===modal)modal.classList.remove('open')};
   let decorateTimer=0;new MutationObserver(()=>{clearTimeout(decorateTimer);decorateTimer=setTimeout(decorate,20)}).observe(rows,{childList:true,subtree:true});
   async function loadAssets(){try{const r=await fetch('/api/assets?view=list',{cache:'no-store'}),d=await r.json();if(r.ok&&Array.isArray(d)){assets=d;decorate()}}catch(e){console.warn('Asset expiry health failed',e)}}
+  document.addEventListener('assets-loaded',event=>{if(Array.isArray(event.detail)){assets=event.detail;decorate()}});
   loadAssets();setInterval(loadAssets,60000);
 })();
 </script>`;
