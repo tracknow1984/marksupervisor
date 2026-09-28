@@ -5,6 +5,7 @@ const path=require('path');
 const crypto=require('crypto');
 const {fork}=require('child_process');
 const accounts=require('./company-account-store');
+const publicAssetToken=require('./public-asset-token');
 const companyRouter=require('./routes/company-onboarding');
 const ROOT=path.resolve(process.env.SV365_DATA_DIR||path.join(process.cwd(),'data'));
 function tenantDirectory(companyId){
@@ -30,7 +31,7 @@ function createPool(){
     entry=workers.get(id);if(entry&&!entry.stopping)return acquire(id);
     const dir=tenantDirectory(id);fs.mkdirSync(dir,{recursive:true,mode:0o700});
     // Explicit environment allowlist: never inherit a fleet token or account-store secrets.
-    const env={};for(const key of ['PATH','NODE_PATH','NODE_ENV','TZ','LANG','HOME','TMPDIR','HTTP_PROXY','HTTPS_PROXY','NO_PROXY','http_proxy','https_proxy','no_proxy','RENDER_GIT_COMMIT','APP_PUBLIC_URL','SMTP_HOST','SMTP_PORT','SMTP_SECURE','SMTP_USER','SMTP_PASS','SMTP_FROM','MAIL_FROM'])if(process.env[key]!==undefined)env[key]=process.env[key];
+    const env={};for(const key of ['PATH','NODE_PATH','NODE_ENV','TZ','LANG','HOME','TMPDIR','HTTP_PROXY','HTTPS_PROXY','NO_PROXY','http_proxy','https_proxy','no_proxy','RENDER_GIT_COMMIT','APP_PUBLIC_URL','SMTP_HOST','SMTP_PORT','SMTP_SECURE','SMTP_USER','SMTP_PASS','SMTP_FROM','MAIL_FROM','SV365_PUBLIC_QR_SECRET'])if(process.env[key]!==undefined)env[key]=process.env[key];
     Object.assign(env,{PORT:'0',SV365_TENANT_ID:id,SV365_DATA_DIR:dir,SV365_SAMPLE_DATA:'0'});
     const child=fork(path.join(__dirname,'..','operations-app.js'),[],{env,cwd:path.join(__dirname,'..'),stdio:['ignore','ignore','inherit','ipc']});
     entry={id,dir,child,port:null,active:1,used:Date.now(),stopping:false};workers.set(id,entry);
@@ -43,6 +44,12 @@ function createPool(){
   return{get,release(entry){entry.active=Math.max(0,entry.active-1);entry.used=Date.now()},async close(){await Promise.all([...workers.values()].map(stop))},workers};
 }
 function createGateway(){
+  // A persistent signing key keeps printed QR stickers valid across restarts.
+  if(!process.env.SV365_PUBLIC_QR_SECRET){
+    fs.mkdirSync(ROOT,{recursive:true,mode:0o700});const file=path.join(ROOT,'public-qr-signing-key');
+    try{fs.writeFileSync(file,crypto.randomBytes(32).toString('hex'),{mode:0o600,flag:'wx'})}catch(e){if(e.code!=='EEXIST')throw e}
+    process.env.SV365_PUBLIC_QR_SECRET=fs.readFileSync(file,'utf8').trim();
+  }
   let regoBusyUntil=0;
   const app=express(),pool=createPool();app.disable('x-powered-by');app.set('trust proxy',1);
   app.use((req,res,next)=>{res.set('Cache-Control','private, no-store');res.set('Vary','Cookie');res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','same-origin');res.set('X-Frame-Options','SAMEORIGIN');next()});
@@ -66,7 +73,14 @@ function createGateway(){
     authParser(req,res,err=>err?next(err):companyRouter(req,res,()=>res.status(404).json({error:'Account endpoint not found'})));
   });
   app.use(async(req,res)=>{
-    const ctx=session(req);
+    // Only signed, read-only asset routes may bypass account sign-in.
+    let ctx;
+    if(req.path.startsWith('/public/assets/')){
+      const match=req.path.match(/^\/public\/assets\/([A-Za-z0-9_.-]+)(?:\/(?:summary\.pdf|service-history\.(?:pdf|csv)|documents\/[0-9a-f-]{36}))?$/);
+      const shared=match&&['GET','HEAD'].includes(req.method)?publicAssetToken.verify(match[1]):null;
+      if(!shared)return res.status(404).send('Asset link not found');
+      ctx={company:{id:shared.c,name:''},user:{role:'Public',firstName:'',lastName:''}};
+    }else ctx=session(req);
     if(!ctx)return req.path.startsWith('/api/')?res.status(401).json({error:'Sign in required',code:'AUTH_REQUIRED'}):res.redirect('/login');
     if(ctx.user.mustChangePassword)return req.path.startsWith('/api/')?res.status(403).json({error:'Change your temporary password first',code:'PASSWORD_CHANGE_REQUIRED'}):res.redirect('/onboarding?changePassword=1');
     // Company identity comes exclusively from the authenticated session, never a URL/body/header.
@@ -98,3 +112,4 @@ function createGateway(){
 }
 function start(){const {app,pool}=createGateway();const server=app.listen(process.env.PORT||3000,'0.0.0.0',()=>console.log('Supervisor365 company gateway ready'));let stopping=false;const close=()=>{if(stopping)return;stopping=true;server.close(async()=>{await pool.close();process.exit(0)});setTimeout(()=>process.exit(1),10000).unref()};process.on('SIGTERM',close);process.on('SIGINT',close);return{server,pool}}
 module.exports={createGateway,start,tenantDirectory};
+
