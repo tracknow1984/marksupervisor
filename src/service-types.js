@@ -12,7 +12,7 @@ function category(a){
  if(/trailer|dolly/.test(t))return 'trailer';
  if(/truck|prime mover|bus|tipper/.test(t))return 'truck';
  if(/car\b|light vehicle|ute\b|van\b|motorcycle|passenger/.test(t))return 'car';
- if(/machine|plant|excavator|loader|dozer|crane|forklift|roller|grader|telehandler|work platform|grinder|chipper|skid|bobcat|generator|screen|crusher|stacker|compactor/.test(t))return 'machine';
+ if(/machine|plant|excavator|loader|dozer|crane|forklift|roller|grader|telehandler|work platform|grinder|chipper|skid|positrack|bobcat|generator|screen|crusher|stacker|compactor/.test(t))return 'machine';
  return 'other';
 }
 const options=a=>a?groups[category(a)]:[];
