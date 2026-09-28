@@ -1,5 +1,6 @@
 const express=require('express');
 const router=express.Router();
+router.use(require('./asset-service-report').router);
 const {page}=require('../layout');
 const {assets}=require('../store');
 const services=require('../service-store');
