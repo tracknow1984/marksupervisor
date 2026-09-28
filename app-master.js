@@ -26,7 +26,7 @@ app.use((req,res,next)=>{
   res.send=(body)=>{
     if(typeof body==='string'&&req.path==='/prestarts'){
       body=body.replace("&z=17&output=embed\"></iframe>'}}function captureLocation","&z=17&output=embed\"></iframe>'}}}function captureLocation");
-      const available=assets.filter(a=>!['Retired','Decommissioned','Sold'].includes(a.status));
+      const available=assets.filter(a=>!['Retired','Decommissioned','Sold'].includes(a.status)).map(({id,rego,plantId,name,type,reading,status,registrationExpiry})=>({id,rego,plantId,name,type,reading,status,registrationExpiry}));
       const options=available.map(a=>`<option value="${htmlEsc(a.id)}">${htmlEsc(a.rego||a.id)} · ${htmlEsc(a.name)} · ${htmlEsc(a.type)}</option>`).join('');
       body=body.replace('<select id="primary" class="bigSelect"><option value="">Select primary asset...</option></select>',`<select id="primary" class="bigSelect"><option value="">Select primary asset...</option>${options}</select>`);
       const selectorSafety=`<script>(()=>{const p=document.getElementById('primary'),b=document.getElementById('beginBtn'),preview=document.getElementById('primaryPreview');if(!p)return;const assets=${JSON.stringify(available).replace(/</g,'\\u003c')};const sync=()=>{const a=assets.find(x=>String(x.id)===String(p.value));if(b)b.disabled=!a;if(preview)preview.innerHTML=a?'<div class="assetPreview"><b>'+a.name+'</b><div class="sub">'+(a.type||'')+' · '+(a.rego||a.id)+'</div></div>':''};p.addEventListener('change',sync);sync()})();</script>`;
