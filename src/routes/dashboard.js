@@ -1,3 +1,4 @@
+const {requiresCoi}=require('../asset-coi');
 const express=require('express');
 const router=express.Router();
 const {page}=require('../layout');
@@ -23,7 +24,7 @@ function expiryHealth(asset){
     {key:'registrationExpiry',label:'Registration',date:asset.registrationExpiry},
     {key:'insuranceExpiry',label:'Insurance',date:asset.insuranceExpiry},
     {key:'coiDueDate',label:'Certificate of Inspection',date:asset.coiDueDate}
-  ].map(x=>({...x,days:daysUntil(x.date)}));
+  ].filter(x=>x.key!=='coiDueDate'||requiresCoi(asset)).map(x=>({...x,days:daysUntil(x.date)}));
   const red=checks.filter(x=>x.days===null||x.days<0);
   const yellow=checks.filter(x=>x.days!==null&&x.days>=0&&x.days<=30);
   return {status:red.length?'red':yellow.length?'yellow':'green',red,yellow,checks};
