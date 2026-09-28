@@ -52,7 +52,7 @@ if(!express.response.__sv365PrestartRegistrationSafetyPatched){
   function apply(){decorateSelect(primary);decorateSelect(secondary);updateNote();if(blocked.has(String(primary.value)))clearBlockedSelection(primary);if(secondary&&blocked.has(String(secondary.value)))secondary.value=''}
   async function load(){
     try{
-      const r=await fetch('/api/assets',{cache:'no-store'}),assets=await r.json();
+      const r=await fetch('/api/assets?view=list',{cache:'no-store'}),assets=await r.json();
       if(!r.ok||!Array.isArray(assets))return;
       blocked=new Map(assets.filter(expired).map(a=>[String(a.id),a]));apply();
     }catch(e){console.warn('Pre-start registration safety check failed',e)}
