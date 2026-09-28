@@ -143,7 +143,7 @@ async function load(){
   const response=await fetch('/api/assets?view=list',{cache:'no-store'});
   if(!response.ok)throw new Error('Unable to load assets');
   const data=await response.json();if(!Array.isArray(data))throw new Error('Invalid asset response');
-  list=data;render();
+  list=data;document.dispatchEvent(new CustomEvent('assets-loaded',{detail:list}));render();
   $('total').textContent=list.length;
   $('active').textContent=list.filter(a=>a.status==='In Service').length;
   $('serviceDue').textContent=list.filter(a=>a.serviceDue).length;
