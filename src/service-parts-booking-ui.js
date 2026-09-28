@@ -7,6 +7,9 @@
     let sequence=0,ready=false,revision='';
     const money=n=>n==null?'Not set':Number(n).toLocaleString('en-AU',{style:'currency',currency:'AUD'});
     async function load(){
+      const inspection=type.value==='Certificate of Inspection';
+      toggle.disabled=inspection;toggle.closest('.field').hidden=inspection;
+      if(inspection)toggle.checked=false;
       const request=++sequence;flag.value=toggle.checked?'true':'false';token.value='';confirm.checked=false;revision='';ready=false;list.replaceChildren();panel.hidden=!toggle.checked;confirmRow.hidden=true;confirm.required=false;
       manage.href='/service/parts?asset='+encodeURIComponent(asset.value)+'&type='+encodeURIComponent(type.value);
       if(!toggle.checked)return;

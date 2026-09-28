@@ -32,7 +32,7 @@ function requestedDateISO(value){
 }
 function displayRequestedDate(value){const parts=String(value||'').split('-');return parts.length===3?parts[2]+'/'+parts[1]+'/'+parts[0]:String(value||'—')}
 function partsPreview(assetId,serviceType){
- const lines=parts.snapshot(assetId,serviceType);
+ const lines=serviceType==='Certificate of Inspection'?[]:parts.snapshot(assetId,serviceType);
  const revision=require('crypto').createHash('sha256').update(JSON.stringify(lines.map(({id,...line})=>line))).digest('hex');
  return {parts:lines,revision};
 }
@@ -46,7 +46,7 @@ function createBooking(b){
   if(!asset)throw new Error('Selected vehicle was not found');
   if(!validType(asset,String(b.serviceType)))throw new Error('Select a service type that matches this asset class');
   const choice=b.partsRequired;
-  const required=choice===undefined?true:[true,'true','1','on',1].includes(choice);
+  const required=String(b.serviceType)!=='Certificate of Inspection'&&(choice===undefined?true:[true,'true','1','on',1].includes(choice));
   const preview=required?partsPreview(asset.id,String(b.serviceType)):{parts:[],revision:''};
   if(required&&choice!==undefined&&preview.parts.length&&b.partsConfirmation!==preview.revision)throw new Error('Review and confirm the saved parts. If the list has changed, refresh parts and confirm again.');
   const confirmed=required&&preview.parts.length>0&&b.partsConfirmation===preview.revision;
