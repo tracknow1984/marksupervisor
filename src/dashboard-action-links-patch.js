@@ -1,3 +1,4 @@
+const {requiresCoi}=require('./asset-coi');
 const express=require('express');
 const {assets,employees}=require('./store');
 const operations=require('./persistent-store');
@@ -19,7 +20,7 @@ function expiryProblem(asset){
     {key:'registrationExpiry',label:'Registration',date:asset.registrationExpiry},
     {key:'insuranceExpiry',label:'Insurance',date:asset.insuranceExpiry},
     {key:'coiDueDate',label:'Certificate of Inspection',date:asset.coiDueDate}
-  ].map(x=>({...x,days:daysUntil(x.date)}));
+  ].filter(x=>x.key!=='coiDueDate'||requiresCoi(asset)).map(x=>({...x,days:daysUntil(x.date)}));
   return checks.find(x=>x.days===null||x.days<0)||null;
 }
 function employeeHealth(e){
