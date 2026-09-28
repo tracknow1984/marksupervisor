@@ -1,4 +1,6 @@
 require('./src/tenant-worker-context');
+// Signed-in pages run in this separate process, so load the shared date UI here too.
+require('./src/date-format-patch');
 // Stable hosting entry point for Supervisor365.
 // During the build stage, restore a linked sample dataset whenever a fresh runtime starts.
 require('./src/build-sample-data').seed();
