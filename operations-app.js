@@ -1,4 +1,5 @@
 require('./src/tenant-worker-context');
+require('./src/asset-display-patch');
 // Signed-in pages run in this separate process, so load the shared date UI here too.
 require('./src/date-format-patch');
 require('./src/service-parts-booking-patch');
