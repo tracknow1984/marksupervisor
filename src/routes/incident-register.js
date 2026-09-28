@@ -5,7 +5,7 @@ const {assets,employees}=require('../store');
 const incidents=require('../incident-store');
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const vehicleLabel=a=>`${a.rego||a.id} | ${a.make||''} ${a.model||a.name||''}`.replace(/\s+/g,' ').trim();
+const vehicleLabel=a=>[String(a.plantId||a.rego||'').trim(),String(a.name||[a.make,a.model].filter(Boolean).join(' ')||a.type||'Unnamed asset').trim()].filter(Boolean).join(' | ');
 const employeeLabel=e=>`${e.firstName||''} ${e.lastName||''}${e.payrollIdentifier?' • '+e.payrollIdentifier:''}`.trim();
 const trailerAssets=()=>assets.filter(a=>/trailer|dolly/i.test(String(a.type||'')));
 const activeAssets=()=>assets.filter(a=>!['Retired','Sold','Decommissioned'].includes(a.status));

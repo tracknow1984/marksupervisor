@@ -7,7 +7,7 @@ const services=require('../service-store');
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const activeAssets=()=>assets.filter(a=>!['Retired','Sold','Decommissioned'].includes(a.status));
 const serviceTypes=['Trailer B Service','Truck A Service','Truck B Service','Truck C Service','Certificate of Inspection','Truck D Service'];
-const vehicleLabel=a=>`${a.rego||a.id} | ${a.make||''} ${a.model||a.name||''}`.replace(/\s+/g,' ').trim();
+const vehicleLabel=a=>[String(a.plantId||a.rego||'').trim(),String(a.name||[a.make,a.model].filter(Boolean).join(' ')||a.type||'Unnamed asset').trim()].filter(Boolean).join(' | ');
 const daysBetween=(a,b)=>Math.ceil((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
 const today=()=>new Date().toISOString().slice(0,10);
 function serviceState(r){if(r.status==='COMPLETED')return{label:'Completed',cls:'ok'};if(r.status==='CANCELLED')return{label:'Cancelled',cls:'bad'};const d=daysBetween(today(),r.requestedDate);if(d<0)return{label:'Overdue',cls:'bad'};if(d<=7)return{label:'Due ≤ 7 Days',cls:'due'};if(d<=30)return{label:'Due ≤ 30 Days',cls:'daily'};return{label:'Scheduled',cls:'ok'}}
