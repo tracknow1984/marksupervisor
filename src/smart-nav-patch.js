@@ -62,7 +62,8 @@ if(!express.response.__sv365SmartNavPatched){
       {label:'EWD Overview',href:'/ewd-overview',desc:'Monitor active fatigue, work and rest',icon:icons.ewdOverview,badge:'ewdAttention'},
       {label:'Electronic Work Diary',href:'/ewd',desc:'Driver work, rest and fatigue management',icon:icons.ewd},
       {label:'Vehicle Defects',href:'/vehicle-defects',desc:'Open defects and maintenance',badge:'defects'},
-      {label:'Service Schedule',href:'/service',desc:'Upcoming fleet servicing',badge:'services'}
+      {label:'Service Schedule',href:'/service',desc:'Upcoming fleet servicing',badge:'services'},
+      {label:'Parts',href:'/service/parts',desc:'Catalogue and saved service parts lists'}
     ]},
     {id:'fleet',label:'Fleet',icon:icons.fleet,items:[
       {label:'Live GPS',href:'/gps',desc:'Tracked assets and geofences'},
