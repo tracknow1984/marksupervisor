@@ -1,3 +1,3 @@
-// Inline vector artwork keeps the SV365 mark crisp on the login page and in navigation.
-const mark=`<svg viewBox="0 0 180 64" role="img" aria-label="SV365 Supervisor 365" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="178" height="62" rx="9" fill="#102235" stroke="#37c7ef" stroke-width="2"/><text x="13" y="43" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="37" font-weight="900" letter-spacing="-2">SV</text><path d="M54 12v38" stroke="#102235" stroke-width="4"/><text x="69" y="43" fill="#37c7ef" font-family="Arial,Helvetica,sans-serif" font-size="35" font-weight="900" letter-spacing="-2">365</text><path d="M69 12v38" stroke="#102235" stroke-width="3"/></svg>`;
-module.exports={mark};
+const logoPath='/brand/supervisor365-concept-b.webp';
+const mark=`<img src="${logoPath}" alt="SV365 Supervisor 365">`;
+module.exports={mark,logoPath};

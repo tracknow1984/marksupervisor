@@ -1,6 +1,7 @@
 const express=require('express');
 const app=express();
 const PORT=process.env.PORT||3000;
+app.get('/brand/supervisor365-concept-b.webp',(req,res)=>res.sendFile(__dirname+'/assets/supervisor365-concept-b.webp',{headers:{'Cache-Control':'public, max-age=86400'}}));
 const {assets}=require('./src/store');
 const operationsDb=require('./src/persistent-store');
 app.use(express.json({limit:'60mb'}));
