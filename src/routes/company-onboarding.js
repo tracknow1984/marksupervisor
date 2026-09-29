@@ -75,6 +75,23 @@ router.post('/api/auth/change-password',requireAuth,(req,res)=>{try{const user=a
 router.patch('/api/profile',requireAuth,(req,res)=>{try{res.json({ok:true,user:accounts.updateUserProfile(req.auth.user.id,req.body||{})})}catch(e){res.status(400).json({error:e.message})}});
 router.put('/api/company/logo',requireAdmin,(req,res)=>{try{res.json({ok:true,company:accounts.updateCompanyLogo(req.auth.company.id,req.body?.logo)})}catch(e){res.status(400).json({error:e.message})}});
 router.get('/api/company/users',requireAuth,(req,res)=>res.json({users:accounts.listCompanyUsers(req.auth.company.id)}));
+router.post('/api/company/employee-logins/:id',requireAdmin,async(req,res)=>{
+  try{
+    if(!['manual','generate'].includes(req.body?.mode))return res.status(400).json({error:'Choose a password setup option'});
+    const path=require('path'),fs=require('fs'),crypto=require('crypto');
+    const root=process.env.SV365_DATA_DIR||path.join(process.cwd(),'data');
+    const dir=path.join(root,'tenants',crypto.createHash('sha256').update(req.auth.company.id).digest('hex'));
+    let employees=[];try{employees=JSON.parse(fs.readFileSync(path.join(dir,'collection-employees.json'),'utf8'))}catch(e){if(e.code!=='ENOENT')throw e}
+    const employee=employees.find(e=>String(e.id)===req.params.id);
+    if(!employee)return res.status(404).json({error:'Employee not found in your company'});
+    if(req.body.mode==='generate'&&!mailer.configured())return res.status(503).json({error:'Email is not configured. Choose Set password to provide login details securely, or configure email before generating a password.'});
+    if(req.body.mode==='manual'&&typeof req.body.password!=='string')return res.status(400).json({error:'Enter a password'});
+    const created=accounts.setEmployeeLogin(req.auth.company.id,employee,req.body.mode==='manual'?req.body.password:undefined);
+    let email={sent:false,code:'NOT_REQUESTED'};
+    if(req.body.mode==='generate')try{email=await mailer.sendEmployeeWelcome(created.company,created.user,created.temporaryPassword)}catch{email={sent:false,code:'EMAIL_FAILED'}}
+    res.json({user:created.user,email,temporaryPassword:req.body.mode==='generate'&&!email.sent?created.temporaryPassword:undefined});
+  }catch(e){res.status(400).json({error:e.message})}
+});
 router.post('/api/company/employees',requireAdmin,async(req,res)=>{try{const created=accounts.createEmployeeUser(req.auth.company.id,req.body||{});let email={sent:false,code:'NOT_ATTEMPTED'};try{email=await mailer.sendEmployeeWelcome(created.company,created.user,created.temporaryPassword)}catch(e){email={sent:false,code:'EMAIL_FAILED',error:e.message}}res.status(201).json({user:created.user,email,temporaryPassword:email.sent?undefined:created.temporaryPassword})}catch(e){res.status(400).json({error:e.message})}});
 router.post('/api/auth/mfa/setup',requireAuth,async(req,res)=>{try{const secret=totp.generateSecret(),uri=totp.otpauth(secret,req.auth.user.email||req.auth.user.username,'Supervisor365');accounts.setPendingMfa(req.auth.user.id,secret);const qr=await QRCode.toDataURL(uri,{width:240,margin:1});res.json({ok:true,qr,manualKey:secret})}catch(e){res.status(400).json({error:e.message})}});
 router.post('/api/auth/mfa/confirm',requireAuth,(req,res)=>{try{const secret=accounts.getPendingMfaSecret(req.auth.user.id);if(!secret||!totp.verify(secret,req.body?.code))return res.status(400).json({error:'Incorrect 2FA code'});res.json({ok:true,user:accounts.enableMfa(req.auth.user.id)})}catch(e){res.status(400).json({error:e.message})}});

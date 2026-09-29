@@ -52,6 +52,27 @@ function changePassword(userId,password){const d=read(),u=d.users.find(x=>String
 function uniqueUsername(base,d){let candidate=norm(base).replace(/[^a-z0-9._-]/g,'');if(!candidate)candidate='user';let n=1,original=candidate;while(d.users.some(u=>norm(u.username)===candidate)){candidate=original+(++n)}return candidate}
 function temporaryPassword(){return 'S'+crypto.randomBytes(9).toString('base64url').replace(/[-_]/g,'7')+'9!'}
 function createEmployeeUser(companyId,input){const d=read(),company=d.companies.find(c=>String(c.id)===String(companyId));if(!company)throw new Error('Company not found');const firstName=clean(input.firstName),lastName=clean(input.lastName),email=norm(input.email),phone=clean(input.phone),role=clean(input.role)||'Driver';if(!firstName||!lastName||!email)throw new Error('Employee first name, last name and email are required');if(d.users.some(u=>norm(u.email)===email))throw new Error('That employee email already has a Supervisor365 account');const temp=temporaryPassword(),now=new Date().toISOString(),username=uniqueUsername(clean(input.username)||email.split('@')[0],d);const user={id:id('USR'),companyId:company.id,username,email,firstName,lastName,phone,role,status:'ACTIVE',password:hashPassword(temp),mustChangePassword:true,mfa:{enabled:false,method:'totp',secretEnc:'',pendingSecretEnc:''},identityProviders:[],createdAt:now,updatedAt:now,lastLoginAt:null};d.users.push(user);company.onboarding=company.onboarding||{};company.onboarding.employees=true;write(d);return{user:publicUser(user),temporaryPassword:temp,company:publicCompany(company)}}
+function setEmployeeLogin(companyId,employee,password){
+  const d=read(),company=d.companies.find(c=>c.id===companyId);
+  if(!company)throw new Error('Company not found');
+  const email=norm(employee.email),role=clean(employee.employeeAccess);
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error('Enter a valid employee email address');
+  if(!['Owner','Company Admin','Driver','Operations','Service','Safety & Compliance'].includes(role))throw new Error('Select a valid employee access role');
+  let user=d.users.find(u=>u.companyId===companyId&&u.employeeId===String(employee.id));
+  const existing=d.users.find(u=>norm(u.email)===email);
+  if(existing&&existing!==user){
+    if(existing.companyId!==companyId||existing.employeeId&&existing.employeeId!==String(employee.id))throw new Error('That email is already linked to another login account');
+    if(user)throw new Error('That email is already linked to another login account');
+    user=existing;
+  }
+  const temp=password===undefined?temporaryPassword():String(password);
+  if(temp.length<10||temp.length>128)throw new Error('Password must contain between 10 and 128 characters');
+  const hashed=hashPassword(temp),now=new Date().toISOString();
+  if(!user){user={id:id('USR'),companyId,username:uniqueUsername(email.split('@')[0],d),createdAt:now,mfa:{enabled:false},identityProviders:[],lastLoginAt:null};d.users.push(user)}
+  Object.assign(user,{employeeId:String(employee.id),email,firstName:clean(employee.firstName),lastName:clean(employee.lastName),phone:clean(employee.phone),role,status:'ACTIVE',password:hashed,mustChangePassword:true,updatedAt:now});
+  d.sessions=d.sessions.filter(x=>x.userId!==user.id);d.challenges=d.challenges.filter(x=>x.userId!==user.id);
+  write(d);return{user:publicUser(user),temporaryPassword:temp,company:publicCompany(company)};
+}
 function updateUserProfile(userId,input){const d=read(),u=d.users.find(x=>String(x.id)===String(userId));if(!u)throw new Error('User not found');for(const k of ['firstName','lastName','phone'])if(k in input)u[k]=clean(input[k]);u.updatedAt=new Date().toISOString();write(d);return publicUser(u)}
 
 function authKey(){const raw=clean(process.env.SV365_AUTH_ENCRYPTION_KEY);if(!raw)return null;return crypto.createHash('sha256').update(raw).digest()}
@@ -77,4 +98,4 @@ function updateCompanyLogo(companyId,logo){
   if(!c)throw new Error('Company not found');
   c.logo=logo;c.updatedAt=new Date().toISOString();write(d);return publicCompany(c);
 }
-module.exports={updateCompanyLogo,FILE,createCompanySignup,listCompanies,getCompany,getUser,getRawUser,listCompanyUsers,findUserForLogin,verifyUserPassword,createSession,getSession,revokeSession,changePassword,createEmployeeUser,updateUserProfile,setPendingMfa,getPendingMfaSecret,enableMfa,getMfaSecret,createChallenge,consumeChallenge,publicUser,publicCompany};
+module.exports={setEmployeeLogin,updateCompanyLogo,FILE,createCompanySignup,listCompanies,getCompany,getUser,getRawUser,listCompanyUsers,findUserForLogin,verifyUserPassword,createSession,getSession,revokeSession,changePassword,createEmployeeUser,updateUserProfile,setPendingMfa,getPendingMfaSecret,enableMfa,getMfaSecret,createChallenge,consumeChallenge,publicUser,publicCompany};
