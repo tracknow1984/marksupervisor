@@ -8,6 +8,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const active=d=>!['RESOLVED','CLOSED'].includes(String(d.status||'').toUpperCase());
 const priorityFor=label=>{const s=String(label||'').toLowerCase();if(/brake|steering|tyre|wheel|seat belt|king pin|tow eye|coupling|breakaway|air system|chassis crack/.test(s))return 'HIGH';if(/light|warning|wiper|mirror|leak|suspension|bearing|exhaust/.test(s))return 'MEDIUM';return 'LOW'};
 
+function faultEvidence(d){return(d.description?`<p style="white-space:pre-wrap;overflow-wrap:anywhere;max-width:300px">${esc(d.description)}</p>`:'')+(d.photo&&d.photo.startsWith('data:image/jpeg;base64,')?`<img alt="Fault photo" src="${esc(d.photo)}" style="display:block;max-width:180px;max-height:140px;object-fit:contain;border-radius:8px;margin-top:8px">`:'')}
 function reconcile(){
   let defects=db.listDefects();
   let added=0;
@@ -17,7 +18,7 @@ function reconcile(){
       const f=failed[i],key=f.itemId??('IDX-'+i);
       if(defects.some(d=>String(d.prestartId)===String(ps.id)&&String(d.prestartItemId)===String(key)))continue;
       const now=ps.completedAt||new Date().toISOString();
-      const d={id:'DEF-'+Date.now().toString(36).toUpperCase()+'-'+i+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),assetId:ps.assetId,assetName:ps.assetName,assetType:ps.assetType,rego:ps.rego,prestartId:ps.id,prestartItemId:key,defect:f.label||'Pre-Start defect',reportedAt:now,reportedBy:ps.inspector||'Current User',reading:ps.reading||0,location:ps.address||ps.location||'',priority:priorityFor(f.label),status:'OPEN',action:'',resolutionNotes:'',updatedAt:now,resolvedAt:null,closedAt:null};
+      const d={id:'DEF-'+Date.now().toString(36).toUpperCase()+'-'+i+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),assetId:ps.assetId,assetName:ps.assetName,assetType:ps.assetType,rego:ps.rego,prestartId:ps.id,prestartItemId:key,defect:f.label||'Pre-Start defect',description:f.description||'',photo:f.photo||'',reportedAt:now,reportedBy:ps.inspector||'Current User',reading:ps.reading||0,location:ps.address||ps.location||'',priority:priorityFor(f.label),status:'OPEN',action:'',resolutionNotes:'',updatedAt:now,resolvedAt:null,closedAt:null};
       db.saveDefect(d);defects.push(d);added++;
     }
     const a=assets.find(x=>String(x.id)===String(ps.assetId));
@@ -72,7 +73,7 @@ router.get('/vehicle-defects',(req,res)=>{
     items.sort((a,b)=>({HIGH:0,MEDIUM:1,LOW:2}[a.priority]??9)-({HIGH:0,MEDIUM:1,LOW:2}[b.priority]??9)||new Date(b.reportedAt)-new Date(a.reportedAt));
     const name=items[0]?.assetName||'';
     const groupHead=`<tr class="assetGroup"><td colspan="8"><div class="assetGroupInner"><div><b>${esc(rego)}</b><span>${esc(name)}</span></div><span class="groupCount">${items.length} outstanding defect${items.length===1?'':'s'}</span></div></td></tr>`;
-    const rows=items.map(d=>`<tr data-row="${esc(d.id)}"><td>${new Date(d.reportedAt).toLocaleString('en-AU')}</td><td><span class="priority ${esc(d.priority)}">${esc(d.priority)}</span></td><td><b>${esc(d.rego||d.assetId)}</b><div class="sub">${esc(d.assetName)}</div></td><td><b>${esc(d.defect)}</b><div class="sub">${esc(d.prestartId)}</div></td><td><select data-status="${esc(d.id)}"><option${d.status==='OPEN'?' selected':''}>OPEN</option><option${d.status==='IN PROGRESS'?' selected':''}>IN PROGRESS</option><option>RESOLVED</option><option>CLOSED</option></select></td><td><select data-action="${esc(d.id)}"><option value="">Select...</option><option${d.action==='REPAIR'?' selected':''}>REPAIR</option><option${d.action==='REPLACED'?' selected':''}>REPLACED</option><option${d.action==='CONTRACTOR'?' selected':''}>CONTRACTOR</option></select></td><td><input data-notes="${esc(d.id)}" value="${esc(d.resolutionNotes||'')}" placeholder="What was done?"></td><td><button class="primary" data-save="${esc(d.id)}">Save</button></td></tr>`).join('');
+    const rows=items.map(d=>`<tr data-row="${esc(d.id)}"><td>${new Date(d.reportedAt).toLocaleString('en-AU')}</td><td><span class="priority ${esc(d.priority)}">${esc(d.priority)}</span></td><td><b>${esc(d.rego||d.assetId)}</b><div class="sub">${esc(d.assetName)}</div></td><td><b>${esc(d.defect)}</b>${faultEvidence(d)}<div class="sub">${esc(d.prestartId)}</div></td><td><select data-status="${esc(d.id)}"><option${d.status==='OPEN'?' selected':''}>OPEN</option><option${d.status==='IN PROGRESS'?' selected':''}>IN PROGRESS</option><option>RESOLVED</option><option>CLOSED</option></select></td><td><select data-action="${esc(d.id)}"><option value="">Select...</option><option${d.action==='REPAIR'?' selected':''}>REPAIR</option><option${d.action==='REPLACED'?' selected':''}>REPLACED</option><option${d.action==='CONTRACTOR'?' selected':''}>CONTRACTOR</option></select></td><td><input data-notes="${esc(d.id)}" value="${esc(d.resolutionNotes||'')}" placeholder="What was done?"></td><td><button class="primary" data-save="${esc(d.id)}">Save</button></td></tr>`).join('');
     return groupHead+rows;
   }).join('')||'<tr><td colspan="8"><div class="empty">No outstanding defects.</div></td></tr>';
 
@@ -80,7 +81,7 @@ router.get('/vehicle-defects',(req,res)=>{
     items.sort((a,b)=>new Date(b.resolvedAt||b.closedAt||b.updatedAt)-new Date(a.resolvedAt||a.closedAt||a.updatedAt));
     const name=items[0]?.assetName||'';
     const groupHead=`<tr class="assetGroup archiveGroup"><td colspan="6"><div class="assetGroupInner"><div><b>${esc(rego)}</b><span>${esc(name)}</span></div><span class="groupCount">${items.length} archived defect${items.length===1?'':'s'}</span></div></td></tr>`;
-    const rows=items.map(d=>`<tr><td>${new Date(d.reportedAt).toLocaleString('en-AU')}</td><td>${d.resolvedAt||d.closedAt?new Date(d.resolvedAt||d.closedAt).toLocaleString('en-AU'):'—'}</td><td><b>${esc(d.rego||d.assetId)}</b><div class="sub">${esc(d.assetName)}</div></td><td>${esc(d.defect)}</td><td><span class="pill ok">${esc(d.status)}</span><div class="sub">${esc(d.action||'—')}</div></td><td>${esc(d.resolutionNotes||'—')}</td></tr>`).join('');
+    const rows=items.map(d=>`<tr><td>${new Date(d.reportedAt).toLocaleString('en-AU')}</td><td>${d.resolvedAt||d.closedAt?new Date(d.resolvedAt||d.closedAt).toLocaleString('en-AU'):'—'}</td><td><b>${esc(d.rego||d.assetId)}</b><div class="sub">${esc(d.assetName)}</div></td><td>${esc(d.defect)}${faultEvidence(d)}</td><td><span class="pill ok">${esc(d.status)}</span><div class="sub">${esc(d.action||'—')}</div></td><td>${esc(d.resolutionNotes||'—')}</td></tr>`).join('');
     return groupHead+rows;
   }).join('')||'<tr><td colspan="6"><div class="empty">No archived defects yet.</div></td></tr>';
 

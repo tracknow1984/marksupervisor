@@ -40,18 +40,29 @@ router.post('/api/prestarts',(req,res)=>{
       });
     }
 
+    // Validate every attachment before writing any inspection or defect.
+    for(const {row} of resolved){if(row.results!==undefined&&!Array.isArray(row.results))return res.status(400).json({error:'Invalid checklist results'});for(const item of row.results||[]){
+      if(!item||typeof item!=='object')return res.status(400).json({error:'Invalid checklist item'});
+      if(item.description!==undefined&&(typeof item.description!=='string'||item.description.length>2000))return res.status(400).json({error:'Fault descriptions must be 2000 characters or fewer'});
+      if(item.photo){
+        if(typeof item.photo!=='string'||item.photo.length>800000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(item.photo))return res.status(400).json({error:'Choose a valid fault photo under 600 KB after resizing'});
+        const bytes=Buffer.from(item.photo.split(',')[1],'base64');
+        if(bytes.length<4||bytes[0]!==255||bytes[1]!==216||bytes[2]!==255)return res.status(400).json({error:'Invalid fault photo'});
+      }
+    }
+    }
     const created=[];
     for(const {row,rowIndex,asset} of resolved){
       if(row.fitnessForDutyAccepted!==true)return res.status(400).json({error:`Fitness for Duty declaration must be confirmed before signing the pre-start for ${asset.name}`,code:'FITNESS_DECLARATION_REQUIRED',assetId:asset.id});
       if(!row.signature)return res.status(400).json({error:`Signature required for ${asset.name}`});
-      const results=Array.isArray(row.results)?row.results:[];
+      const results=(Array.isArray(row.results)?row.results:[]).map(x=>({itemId:x.itemId,label:x.label,value:x.value,...(String(x.value||'').toLowerCase()==='fail'?{description:String(x.description||'').trim(),photo:x.photo||''}:{})}));
       const failed=results.filter(x=>String(x.value||'').trim().toLowerCase()==='fail');
       const now=new Date().toISOString();
       const acceptedAt=Number.isFinite(Date.parse(String(row.fitnessForDutyAcceptedAt||'')))?new Date(row.fitnessForDutyAcceptedAt).toISOString():now;
       const id='PS-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).slice(2,7).toUpperCase();
       const isPrimary=row.isPrimary!==undefined?!!row.isPrimary:rowIndex===0;
       const rec={id,sessionId:sessionId||'SESSION-'+Date.now(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,employeeId:employee.id,employeeName,inspector:employeeName||inspector||'Current User',isPrimary,completedAt:now,inspectionDate:row.inspectionDate,location:row.location||asset.location||'',address:row.address||'',latitude:Number.isFinite(Number(row.latitude))?Number(row.latitude):null,longitude:Number.isFinite(Number(row.longitude))?Number(row.longitude):null,locationAccuracy:Number.isFinite(Number(row.locationAccuracy))?Number(row.locationAccuracy):null,locationCapturedAt:row.locationCapturedAt||null,reading:Number(row.reading)||0,notes:row.notes||'',results,signature:row.signature,fitnessForDutyDeclaration:{accepted:true,acceptedAt,version:FITNESS_DECLARATION_VERSION,heading:FITNESS_DECLARATION.heading,items:FITNESS_DECLARATION.items},status:failed.length?'Failed':'Passed',failedCount:failed.length};
-      const defectRows=failed.map((f,i)=>({id:'DEF-'+Date.now().toString(36).toUpperCase()+'-'+i+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,prestartId:id,prestartItemId:f.itemId??('IDX-'+i),defect:f.label||'Pre-Start defect',reportedAt:now,reportedBy:rec.inspector,reading:rec.reading,location:rec.address||rec.location||'',priority:priorityFor(f.label),status:'OPEN',action:'',resolutionNotes:'',updatedAt:now,resolvedAt:null,closedAt:null}));
+      const defectRows=failed.map((f,i)=>({id:'DEF-'+Date.now().toString(36).toUpperCase()+'-'+i+'-'+Math.random().toString(36).slice(2,6).toUpperCase(),assetId:asset.id,assetName:asset.name,assetType:asset.type,rego:asset.rego,prestartId:id,prestartItemId:f.itemId??('IDX-'+i),defect:f.label||'Pre-Start defect',description:f.description||'',photo:f.photo||'',reportedAt:now,reportedBy:rec.inspector,reading:rec.reading,location:rec.address||rec.location||'',priority:priorityFor(f.label),status:'OPEN',action:'',resolutionNotes:'',updatedAt:now,resolvedAt:null,closedAt:null}));
       db.savePrestartWithDefects(rec,defectRows);
       const savedPrestart=db.getPrestart(id);
       const savedDefects=db.listDefects().filter(d=>String(d.prestartId)===String(id));
