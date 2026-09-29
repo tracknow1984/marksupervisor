@@ -41,6 +41,7 @@ router.use((req,res,next)=>{
 });
 
 router.get('/signup',(req,res)=>{res.set('Cache-Control','no-store');res.send(signupPage())});
+router.get('/brand/supervisor365-concept-b.webp',(req,res)=>res.sendFile(require('path').join(__dirname,'../../assets/supervisor365-concept-b.webp'),{headers:{'Cache-Control':'public, max-age=86400'}}));
 router.get('/login',(req,res)=>{res.set('Cache-Control','no-store');res.send(loginPage())});
 router.get('/onboarding',(req,res)=>{res.set('Cache-Control','no-store');if(!authContext(req))return res.redirect('/login');res.send(onboardingPage())});
 router.get('/api/public/abn-lookup',async(req,res)=>{try{const d=await lookupAbn(req.query.abn);if(!d.valid)return res.status(400).json(d);res.set('Cache-Control','no-store');res.json(d)}catch(e){res.status(502).json({valid:validAbn(req.query.abn),lookupAvailable:true,error:e.message})}});
