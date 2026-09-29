@@ -21,7 +21,9 @@ router.get('/prestarts',(req,res)=>{
     <section class="stepCard">
       <div class="driverCard"><div class="field"><label>Driver / Employee <span class="req">*</span></label><select id="prestartEmployee" class="bigSelect"><option value="">Loading employees...</option></select><div id="prestartEmployeeHint" class="sub" style="margin-top:6px">The selected employee will be latched to the primary asset when this pre-start is submitted.</div></div></div>
       <h3>Primary Asset</h3>
-      <select id="primary" class="bigSelect"><option value="">Select primary asset...</option>${primaryOptions}</select>
+      <div class="field" style="margin-bottom:12px"><label for="primaryIdentifier">Find asset by</label><select id="primaryIdentifier" class="bigSelect"><option value="">Choose Plant ID or Rego...</option><option value="plantId">Plant ID</option><option value="rego">Rego</option></select></div>
+      <label for="primary" id="primaryAssetLabel">Select an identifier above</label>
+      <select id="primary" class="bigSelect" disabled><option value="">Choose Plant ID or Rego first...</option>${primaryOptions}</select>
       <div id="primaryPreview"></div>
       <label class="towPrompt"><input type="checkbox" id="hasTow"><span><b>Is there another asset in tow you would like to add for a pre-start?</b></span></label>
       <div id="secondaryArea" class="secondaryArea hidden"><div class="secondaryRow"><select id="secondary" class="bigSelect"><option value="">Select secondary asset...</option></select><button class="secondary" type="button" id="addSecondary">＋ Add Asset</button></div><div id="secondaryList"></div></div>
@@ -41,6 +43,18 @@ let itemsByAsset={};
 let employees=[];
 let gps={latitude:null,longitude:null,accuracy:null,capturedAt:null};
 const primary=$('primary');
+const primaryIdentifier=$('primaryIdentifier');
+function refreshPrimaryOptions(){
+  const mode=primaryIdentifier.value,previous=primary.value;
+  $('primaryAssetLabel').textContent=mode==='plantId'?'Select Plant ID':mode==='rego'?'Select Rego':'Select an identifier above';
+  primary.disabled=!mode;
+  primary.replaceChildren(new Option(mode==='plantId'?'Select Plant ID...':mode==='rego'?'Select Rego...':'Choose Plant ID or Rego first...',''));
+  if(mode){allAssets.filter(a=>String(a[mode]||'').trim()).sort((a,b)=>String(a[mode]).localeCompare(String(b[mode]),undefined,{numeric:true,sensitivity:'base'})).forEach(a=>primary.add(new Option(a[mode]+' · '+a.name,a.id)))}
+  primary.value=[...primary.options].some(o=>o.value===previous)?previous:'';
+  primary.dispatchEvent(new Event('change',{bubbles:true}));
+}
+primaryIdentifier.addEventListener('change',refreshPrimaryOptions);
+refreshPrimaryOptions();
 const secondary=$('secondary');
 const employeeSelect=$('prestartEmployee');
 const hasTow=$('hasTow');
@@ -105,7 +119,7 @@ $('addSecondary').addEventListener('click',()=>{if(!secondary.value)return;if(!s
 renderSecondaryOptions();
 updateStartHint();
 loadEmployees();
-if(preselectAsset&&[...primary.options].some(o=>String(o.value)===String(preselectAsset))){primary.value=preselectAsset;renderPrimary()}
+if(preselectAsset){const selected=allAssets.find(a=>String(a.id)===String(preselectAsset));if(selected){primaryIdentifier.value=selected.plantId?'plantId':selected.rego?'rego':'';refreshPrimaryOptions();if([...primary.options].some(o=>String(o.value)===String(preselectAsset))){primary.value=preselectAsset;renderPrimary()}}}
 
 function applyGps(){
   if(gps.latitude===null)return;
