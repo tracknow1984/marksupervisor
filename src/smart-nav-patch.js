@@ -1,3 +1,4 @@
+const {mark}=require('./brand');
 const express=require('express');
 
 if(!express.response.__sv365SmartNavPatched){
@@ -18,7 +19,7 @@ if(!express.response.__sv365SmartNavPatched){
 .side.smartNav{background:linear-gradient(180deg,#0a111b 0%,#0c1522 100%);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
 .smartHead{height:72px;display:flex;align-items:center;padding:0 16px;gap:12px;border-bottom:1px solid rgba(255,255,255,.06);position:relative;flex:0 0 72px}
 .smartBrandMark{width:44px;height:44px;border:1px solid rgba(55,199,242,.42);border-radius:14px;display:grid;place-items:center;color:#35c8f3;background:linear-gradient(145deg,#122031,#0b141f);font-weight:900;font-size:12px;letter-spacing:-.5px;box-shadow:0 8px 20px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.04);flex:0 0 44px}
-.smartBrandText{min-width:0}.smartBrandText b{display:block;color:#f2f6fa;font-size:14px;letter-spacing:.1px}.smartBrandText span{display:block;color:#65758a;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.smartBrandMark svg{width:100%;height:100%;display:block}.smartBrandText{min-width:0}.smartBrandText b{display:block;color:#f2f6fa;font-size:14px;letter-spacing:.1px}.smartBrandText span{display:block;color:#65758a;font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-top:2px}
 .smartPin{margin-left:auto;width:30px;height:30px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#8494a9;border-radius:8px;display:grid;place-items:center;cursor:pointer;flex:0 0 30px}.smartPin:hover{color:#fff;background:rgba(255,255,255,.07)}.smartPin svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8}
 .smartNavBody{padding:12px 9px 14px;overflow:auto;overflow-x:hidden;flex:1;scrollbar-width:none}.smartNavBody::-webkit-scrollbar{display:none}
 .smartQuick{width:58px;height:42px;margin:0 auto 11px;border:1px solid rgba(54,198,242,.24);background:linear-gradient(145deg,rgba(34,163,211,.18),rgba(37,119,227,.13));color:#45c8f3;border-radius:12px;display:flex;align-items:center;gap:11px;padding:0 17px;cursor:pointer;overflow:hidden;font-weight:850;transition:.15s ease}.side.smartNav:hover .smartQuick,.side.smartNav.pinned .smartQuick{width:248px;margin-left:1px;margin-right:1px}.smartQuick:hover{background:linear-gradient(145deg,rgba(34,163,211,.25),rgba(37,119,227,.20));color:#79dcfa}.smartQuickIcon{font-size:23px;line-height:1;flex:0 0 22px;text-align:center}.smartQuickText{font-size:10px;letter-spacing:.75px;text-transform:uppercase}
@@ -84,7 +85,7 @@ if(!express.response.__sv365SmartNavPatched){
   const activeFor=href=>href==='/incident-register'?path.startsWith('/incident-register'):path===href||path.startsWith(href+'/');
   let currentGroup=groups.find(g=>g.items.some(i=>activeFor(i.href)))?.id||localStorage.getItem('sv365.smartGroup')||'operations';
   const oldHead=side.querySelector('.sidehead');
-  if(oldHead)oldHead.outerHTML='<div class="smartHead"><div class="smartBrandMark">S365</div><div class="smartBrandText smartReveal"><b>Supervisor365</b><span>Operations Platform</span></div><button type="button" class="smartPin smartReveal" id="smartPin" title="Pin navigation">'+icons.pin+'</button></div>';
+  if(oldHead)oldHead.outerHTML='<div class="smartHead"><a class="smartBrandMark" href="/dashboard" aria-label="Supervisor 365 home">' + ${JSON.stringify(mark)} + '</a><div class="smartBrandText smartReveal"><b>Supervisor365</b><span>Operations Platform</span></div><button type="button" class="smartPin smartReveal" id="smartPin" title="Pin navigation">'+icons.pin+'</button></div>';
   const nav=side.querySelector('.nav');
   if(!nav)return;
   nav.className='smartNavBody';
