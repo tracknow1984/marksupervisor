@@ -10,7 +10,7 @@ module.exports=String.raw`(()=>{
   $('bulkCounts').textContent=job?job.processed+' / '+job.total+' processed · '+job.counts.updated+' updated · '+job.counts.skipped+' skipped · '+job.counts.failed+' failed · '+(job.counts.pending+job.counts.checking)+' remaining':'';
   $('bulkRows').replaceChildren();for(const item of job?.items||[]){const row=document.createElement('tr'),name=document.createElement('td'),result=document.createElement('td');name.textContent=(item.rego||'No rego')+' · '+item.name;result.textContent=item.state+' — '+(item.message||'Queued');row.append(name,result);$('bulkRows').append(row)}
   if(job&&job.processed!==lastProcessed){lastProcessed=job.processed;document.dispatchEvent(new Event('rego-bulk-updated'))}
-  $('bulkRegoBtn').textContent=running?'Fleet Regos · Running':job?.state==='paused'?'Fleet Regos · Paused':'Check Fleet Regos';
+  const fleetLabel=running?'Check Fleet Regos · Running':job?.state==='paused'?'Check Fleet Regos · Paused':'Check Fleet Regos';$('bulkRegoBtn').dataset.actionLabel=fleetLabel;$('bulkRegoBtn').setAttribute('aria-label',fleetLabel);$('bulkRegoBtn').dataset.state=running?'running':job?.state==='paused'?'paused':'';
  }
  async function get(url){const r=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('Unable to load fleet check. Please reopen this panel.');return r.json()}
  async function preview(){try{const p=await get('/api/rego-bulk/preview?includeUnknown='+$('bulkUnknown').checked);$('bulkPreview').textContent=p.eligible+' eligible · '+p.skipped+' skipped · '+p.total+' total assets. There is a 10-second gap between checks.'}catch(e){$('bulkPreview').textContent=e.message}}
