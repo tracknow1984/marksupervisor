@@ -55,6 +55,7 @@ router.use((req,res,next)=>{
 });
 
 router.get('/signup',(req,res)=>{res.set('Cache-Control','no-store');res.send(signupPage())});
+router.get('/brand/supervisor365-concept-b.webp',(req,res)=>res.sendFile(require('path').join(__dirname,'../../assets/supervisor365-concept-b.webp'),{headers:{'Cache-Control':'public, max-age=86400'}}));
 router.get('/login',(req,res)=>{res.set('Cache-Control','no-store');res.send(loginPage())});
 router.get('/client-logo',(req,res)=>{
   res.set('Cache-Control','no-store');
