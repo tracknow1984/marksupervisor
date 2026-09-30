@@ -7,5 +7,5 @@ function list(){ensure();try{const d=JSON.parse(fs.readFileSync(FILE,'utf8'));re
 function write(rows){ensure();const tmp=FILE+'.tmp';fs.writeFileSync(tmp,JSON.stringify(rows,null,2));fs.renameSync(tmp,FILE)}
 function save(record){const rows=list();const i=rows.findIndex(x=>String(x.id)===String(record.id));if(i>=0)rows[i]=record;else rows.push(record);write(rows);return record}
 function get(id){return list().find(x=>String(x.id)===String(id))}
-function update(id,changes){const rows=list();const r=rows.find(x=>String(x.id)===String(id));if(!r)return null;Object.assign(r,changes,{updatedAt:new Date().toISOString()});write(rows);return r}
+function update(id,changes){const rows=list();const r=rows.find(x=>String(x.id)===String(id));if(!r)return null;Object.assign(r,changes,{updatedAt:new Date().toISOString()});write(rows);if(r.defectId)require('./service-defect-link').sync(r);return r}
 module.exports={FILE,list,save,get,update};

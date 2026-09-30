@@ -15,7 +15,7 @@ function category(a){
  if(/machine|plant|excavator|loader|dozer|crane|forklift|roller|grader|telehandler|work platform|grinder|chipper|skid|positrack|bobcat|generator|screen|crusher|stacker|compactor/.test(t))return 'machine';
  return 'other';
 }
-const options=a=>a?groups[category(a)]:[];
+const options=a=>a?[...groups[category(a)],{value:'Defect Repair',label:'Defect Repair'}]:[];
 const valid=(a,value)=>options(a).some(x=>x.value===value);
 const label=value=>Object.values(groups).flat().find(x=>x.value===value)?.label||value;
 module.exports={groups,category,options,valid,label};
