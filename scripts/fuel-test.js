@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict'),fs=require('fs'),os=require('os'),path=require('path');
+process.env.SV365_TENANT_ID='fuel-test';process.env.SV365_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'sv365-fuel-'));
+const root=path.resolve(__dirname,'..');const {assets}=require(root+'/src/store');assets.push({id:'asset-one',name:'Truck',plantId:'FRG117'});
+const fuel=require(root+'/src/fuel-store');fuel.saveTag('asset-one','TAG-001');
+const b={requestId:require('crypto').randomUUID(),assetId:'asset-one',litres:120.5,latitude:-27.4,longitude:153.1,accuracy:8,locationCapturedAt:new Date().toISOString(),docket:{filename:'docket.pdf',base64:Buffer.from('%PDF-1.4\nTest docket').toString('base64')}};
+const row=fuel.save(b,'Test Staff');assert.equal(row.fuelTag,'TAG-001');assert.equal(row.litres,120.5);assert.equal(fuel.save(b,'Test Staff').id,row.id);assert.equal(fuel.list().length,1);
+const repo=require(root+'/src/asset-repository');assert.equal(repo.get('asset-one',row.docketId).public,false);assert.equal(repo.list('other-asset').length,0);
+for(const changes of [{assetId:'other-company-asset'},{litres:0},{latitude:null},{longitude:200},{locationCapturedAt:'2000-01-01'},{docket:{filename:'bad.pdf',base64:Buffer.from('bad').toString('base64')}}])assert.throws(()=>fuel.save({...b,requestId:require('crypto').randomUUID(),...changes},'Staff'));
+for(const key of Object.keys(require.cache))if(key.startsWith(root))delete require.cache[key];assert.equal(require(root+'/src/fuel-store').list()[0].id,row.id);
+process.env.SV365_TENANT_ID='other-company';process.env.SV365_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'sv365-fuel-other-'));for(const key of Object.keys(require.cache))if(key.startsWith(root))delete require.cache[key];assert.equal(require(root+'/src/fuel-store').list().length,0);assert.throws(()=>require(root+'/src/fuel-store').save(b,'Staff'));
+console.log('PASS: tags, refuel, docket privacy, duplicates, invalid inputs, restart persistence and company isolation');

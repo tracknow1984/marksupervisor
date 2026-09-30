@@ -59,6 +59,7 @@ if(!express.response.__sv365SmartNavPatched){
   };
   const groups=[
     {id:'operations',label:'Operations',icon:icons.operations,items:[
+      {label:'Fuel',href:'/fuel',desc:'Fuel tags, refuelling and dockets'},
       {label:'Pre-Starts',href:'/prestarts',desc:'Start and manage inspections'},
       {label:'EWD Overview',href:'/ewd-overview',desc:'Monitor active fatigue, work and rest',icon:icons.ewdOverview,badge:'ewdAttention'},
       {label:'Electronic Work Diary',href:'/ewd',desc:'Driver work, rest and fatigue management',icon:icons.ewd},
@@ -166,3 +167,4 @@ if(!express.response.__sv365SmartNavPatched){
     return originalSend.call(this,body);
   };
 }
+

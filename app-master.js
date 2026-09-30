@@ -5,6 +5,7 @@ app.get('/brand/supervisor365-concept-b.webp',(req,res)=>res.sendFile(__dirname+
 const {assets}=require('./src/store');
 const operationsDb=require('./src/persistent-store');
 app.use(express.json({limit:'60mb'}));
+app.use(require('./src/routes/fuel'));
 
 const htmlEsc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
@@ -89,3 +90,4 @@ const server=app.listen(PORT,'127.0.0.1',()=>{
 });
 process.on('SIGTERM',()=>server.close(()=>process.exit(0)));
 process.on('disconnect',()=>server.close(()=>process.exit(0)));
+
